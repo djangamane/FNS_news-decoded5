@@ -58,13 +58,70 @@ async function fetchArticle(url, retries = 3) {
         maxRedirects: 5
       });
 
-      // Use Readability for better content extraction
-      const dom = new JSDOM(response.data, { url });
-      const reader = new Readability(dom.window.document);
-      const article = reader.parse();
+      let title = 'Untitled';
+      let content = '';
+      let imageUrl = null;
 
-      let title = article.title || 'Untitled';
-      let content = article.textContent || '';
+      // Try Readability first for better content extraction
+      try {
+        const dom = new JSDOM(response.data, { url });
+        const reader = new Readability(dom.window.document);
+        const article = reader.parse();
+
+        if (article) {
+          title = article.title || 'Untitled';
+          content = article.textContent || '';
+
+          // Extract image from Readability content
+          if (article.content) {
+            const $ = cheerio.load(article.content);
+            const img = $('img').first();
+            if (img.length) {
+              imageUrl = img.attr('src');
+              if (imageUrl && !imageUrl.startsWith('http')) {
+                try {
+                  imageUrl = new URL(imageUrl, url).href;
+                } catch (e) {
+                  imageUrl = null;
+                }
+              }
+            }
+          }
+        } else {
+          throw new Error('Readability failed to parse');
+        }
+      } catch (readabilityError) {
+        console.log('Readability failed, falling back to cheerio extraction:', readabilityError.message);
+
+        // Fallback to cheerio-based extraction
+        const $ = cheerio.load(response.data);
+
+        // Extract title
+        title = $('meta[property="og:title"]').attr('content') ||
+                $('meta[name="title"]').attr('content') ||
+                $('title').text() ||
+                $('article h1').first().text() ||
+                $('h1').first().text() ||
+                'Untitled';
+
+        // Find main content container
+        let contentElement = $('article').first();
+        if (!contentElement.length) {
+          contentElement = $('main').first();
+        }
+        if (!contentElement.length) {
+          contentElement = $('body');
+        }
+
+        // Remove unwanted elements
+        contentElement.find('nav, aside, footer, header, .ad, .ads, .advertisement, .related, .comments, .social-share, .newsletter, .sidebar, .popup, .modal, .banner').remove();
+
+        // Extract text from relevant elements
+        content = contentElement.find('p, h1, h2, h3, h4, h5, h6, li').map((i, el) => $(el).text().trim()).get().join('\n\n');
+
+        // Clean up whitespace
+        content = content.replace(/\s+/g, ' ').trim();
+      }
 
       // Additional filtering: remove very short paragraphs (likely ads or navigation)
       const paragraphs = content.split('\n\n').filter(p => {
@@ -82,24 +139,7 @@ async function fetchArticle(url, retries = 3) {
 
       const cleanedContent = paragraphs.join('\n\n').replace(/\s+/g, ' ').trim();
 
-      // Extract main image
-      let imageUrl = null;
-      if (article.content) {
-        const $ = cheerio.load(article.content);
-        const img = $('img').first();
-        if (img.length) {
-          imageUrl = img.attr('src');
-          if (imageUrl && !imageUrl.startsWith('http')) {
-            // Relative URL, make absolute
-            try {
-              imageUrl = new URL(imageUrl, url).href;
-            } catch (e) {
-              imageUrl = null;
-            }
-          }
-        }
-      }
-      // Fallback to meta tags
+      // Fallback to meta tags if Readability didn't find an image
       if (!imageUrl) {
         const $ = cheerio.load(response.data);
         imageUrl = $('meta[property="og:image"]').attr('content') ||
