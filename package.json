@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@google/genai": "^1.16.0",
-    "@mozilla/readability": "^0.6.0",
     "@supabase/supabase-js": "^2.45.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
