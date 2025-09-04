@@ -117,6 +117,7 @@ async function fetchArticle(url, retries = 3) {
         contentElement.find('nav, aside, footer, header, .ad, .ads, .advertisement, .related, .comments, .social-share, .newsletter, .sidebar, .popup, .modal, .banner').remove();
 
         // Extract text from relevant elements
+        // Extract text from relevant elements, preserving paragraph breaks
         content = contentElement.find('p, h1, h2, h3, h4, h5, h6, li').map((i, el) => $(el).text().trim()).get().join('\n\n');
 
         // Clean up whitespace
@@ -137,7 +138,7 @@ async function fetchArticle(url, retries = 3) {
                !trimmed.toLowerCase().includes('all rights reserved');
       });
 
-      const cleanedContent = paragraphs.join('\n\n').replace(/\s+/g, ' ').trim();
+      const cleanedContent = paragraphs.join('\n\n').trim();
 
       // Fallback to meta tags if Readability didn't find an image
       if (!imageUrl) {

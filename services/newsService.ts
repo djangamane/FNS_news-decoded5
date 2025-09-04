@@ -1,8 +1,7 @@
 import { Article, ArticleAnalysis } from '../types';
 import { supabase } from './supabaseClient';
-import { Readability } from '@mozilla/readability';
 
-const BACKEND_URL = 'http://localhost:3002';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3002';
 
 /**
  * Extracts a user-friendly source name from a URL.
