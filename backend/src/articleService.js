@@ -120,8 +120,6 @@ async function fetchArticle(url, retries = 3) {
         // Extract text from relevant elements, preserving paragraph breaks
         content = contentElement.find('p, h1, h2, h3, h4, h5, h6, li').map((i, el) => $(el).text().trim()).get().join('\n\n');
 
-        // Clean up whitespace
-        content = content.replace(/\s+/g, ' ').trim();
       }
 
       // Additional filtering: remove very short paragraphs (likely ads or navigation)
@@ -139,6 +137,10 @@ async function fetchArticle(url, retries = 3) {
       });
 
       const cleanedContent = paragraphs.join('\n\n').trim();
+
+      if (!cleanedContent) {
+        throw new Error('Could not extract meaningful content from the article.');
+      }
 
       // Fallback to meta tags if Readability didn't find an image
       if (!imageUrl) {
