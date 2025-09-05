@@ -72,17 +72,21 @@ async function fetchArticle(url, retries = 3) {
 
 // Batch fetch articles
 async function fetchArticles(urls) {
+  // Run all fetch operations in parallel for much faster batch processing
+  const promises = urls.map(url => fetchArticle(url));
+  const outcomes = await Promise.allSettled(promises);
+
   const results = [];
   const errors = [];
 
-  for (const url of urls) {
-    try {
-      const article = await fetchArticle(url);
-      results.push(article);
-    } catch (error) {
-      errors.push({ url, error: error.message });
+  outcomes.forEach((outcome, index) => {
+    if (outcome.status === 'fulfilled') {
+      results.push(outcome.value);
+    } else {
+      // If a specific fetch failed, record it.
+      errors.push({ url: urls[index], error: outcome.reason.message });
     }
-  }
+  });
 
   return { results, errors };
 }
