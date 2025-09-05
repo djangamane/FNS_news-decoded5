@@ -38,6 +38,44 @@ const extractRealUrl = (url: string): string => {
 };
 
 /**
+ * Fetches details for multiple articles in a single batch request.
+ * @param articlesToFetch An array of article objects that need details.
+ * @returns A Map where keys are article URLs and values are the fetched details.
+ */
+const fetchBatchArticleDetails = async (articlesToFetch: any[]): Promise<Map<string, { text: string; imageUrl?: string }>> => {
+  const urls = articlesToFetch.map(a => extractRealUrl(a.url));
+  if (urls.length === 0) {
+    return new Map();
+  }
+
+  const apiUrl = `${BACKEND_URL}/api/articles/batch`;
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ urls }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Backend batch API error: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    if (!result.success || !result.data?.articles) {
+      throw new Error('Invalid response from backend batch API');
+    }
+
+    const detailsMap = new Map<string, { text: string; imageUrl?: string }>();
+    result.data.articles.forEach((article: any) => {
+      detailsMap.set(article.url, { text: article.content, imageUrl: article.imageUrl });
+    });
+    return detailsMap;
+  } catch (error) {
+    console.error('Error in fetchBatchArticleDetails:', error);
+    return new Map(); // Return empty map on failure to prevent crashing Promise.all
+  }
+};
+/**
  * Fetches the full text of an article from the backend API.
  * @param url The article URL.
  * @param fallbackText Optional fallback text from GitHub JSON.
@@ -117,22 +155,22 @@ export const fetchTopStories = async (): Promise<Article[]> => {
       .sort((a, b) => (b.severity_score || 0) - (a.severity_score || 0))
       .slice(0, 10);
 
-    // Map the raw data to our internal Article type.
-    const processedArticles: Article[] = await Promise.all(topArticles.map(async (article, index) => {
-      let fullText = article.full_text || '';
-      let imageUrl = `https://picsum.photos/seed/${encodeURIComponent(article.title || String(index))}/600/400`; // Default placeholder
-      if (!fullText || fullText.length < 200) { // If no full_text or too short, try to fetch it
-        const result = await fetchArticleText(article.url, article.full_text);
-        fullText = result.text;
-        if (result.imageUrl) {
-          imageUrl = result.imageUrl;
-        }
-      }
+    // Identify articles that need their full text fetched and get them in one batch
+    const articlesToFetch = topArticles.filter(a => !a.full_text || a.full_text.length < 200);
+    const fetchedDetailsMap = await fetchBatchArticleDetails(articlesToFetch);
+
+    const processedArticles: Article[] = topArticles.map((article, index): Article => {
+      const realUrl = extractRealUrl(article.url);
+      const fetchedDetails = fetchedDetailsMap.get(realUrl);
+
+      const fullText = fetchedDetails?.text || article.full_text || 'Full article text could not be extracted.';
+      const imageUrl = fetchedDetails?.imageUrl || article.image_url || `https://picsum.photos/seed/${encodeURIComponent(article.title || 'fallback')}/${600 + index}/400`;
+
       return {
         id: index + 1, // Using index as ID as none is provided in the source
         title: article.title || 'Untitled Article',
         url: article.url,
-        imageUrl: imageUrl,
+        imageUrl,
         fullText: fullText,
         // Scale severity (0-100) to our bias score (0-10)
         biasSeverity: (article.severity_score || 0) / 10,
@@ -140,7 +178,7 @@ export const fetchTopStories = async (): Promise<Article[]> => {
         // Analysis is not included in this source; it will be fetched on-demand.
         analysis: undefined,
       };
-    }));
+    });
 
     return processedArticles;
 

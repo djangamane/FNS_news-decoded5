@@ -60,7 +60,7 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-black text-green-400 font-mono flex flex-col relative overflow-hidden">
       {/* Matrix Video Background */}
       <video
-        className="fixed inset-0 w-full h-full object-cover opacity-20"
+        className="fixed inset-0 w-full h-full object-cover opacity-30"
         autoPlay
         loop
         muted
@@ -68,9 +68,6 @@ const App: React.FC = () => {
       >
         <source src="/matrix.mp4" type="video/mp4" />
       </video>
-
-      {/* Overlay for better text readability */}
-      <div className="fixed inset-0 bg-black/40"></div>
 
       {/* Scan Lines Effect */}
       <div className="fixed inset-0 pointer-events-none">
