@@ -1,35 +1,13 @@
 const axios = require('axios');
 
-// In-memory cache
-const cache = new Map();
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
-
-// Delay function for respectful scraping
-function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// Check if cache entry is valid
-function isCacheValid(entry) {
-  return Date.now() - entry.timestamp < CACHE_DURATION;
-}
-
 // Fetch article with retry logic
 async function fetchArticle(url, retries = 3) {
   if (!process.env.FIRECRAWL_API_KEY) {
     throw new Error('FIRECRAWL_API_KEY environment variable is not set.');
   }
 
-  // Check cache first
-  if (cache.has(url) && isCacheValid(cache.get(url))) {
-    return cache.get(url).data;
-  }
-
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      // Respectful delay
-      await delay(1000 + Math.random() * 2000); // 1-3 seconds
-
       // Use Firecrawl API to handle all scraping complexity
       const response = await axios.post('https://api.firecrawl.dev/v0/scrape', {
         url: url,
@@ -69,31 +47,25 @@ async function fetchArticle(url, retries = 3) {
         fetchedAt: new Date().toISOString()
       };
 
-      // Cache the result
-      cache.set(url, {
-        data: articleData,
-        timestamp: Date.now()
-      });
-
       return articleData;
 
     } catch (error) {
       // Only log the message and data to avoid exposing the API key in the full error object
-      const errorMessage = error.response?.data?.error || error.message;
+      const errorMessage = error.response?.data?.error || error.message || 'An unknown error occurred';
       console.error(`Attempt ${attempt + 1} failed for ${url}: ${errorMessage}`);
 
       if (attempt === retries - 1) {
         let finalMessage = `Failed to fetch article after ${retries} attempts for url: ${url}. Error: ${error.message}`;
         if (error.response?.data) {
           // Include the response from the proxy to make debugging easier
-          finalMessage += ` | Proxy Response: ${error.response.data}`;
+          finalMessage += ` | Proxy Response: ${JSON.stringify(error.response.data)}`;
         }
         const finalError = new Error(finalMessage);
         throw finalError;
       }
 
       // Exponential backoff
-      await delay(Math.pow(2, attempt) * 1000);
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
     }
   }
 }
@@ -115,20 +87,7 @@ async function fetchArticles(urls) {
   return { results, errors };
 }
 
-// Clear expired cache entries
-function clearExpiredCache() {
-  for (const [url, entry] of cache.entries()) {
-    if (!isCacheValid(entry)) {
-      cache.delete(url);
-    }
-  }
-}
-
-// Run cache cleanup every 5 minutes
-setInterval(clearExpiredCache, 5 * 60 * 1000);
-
 module.exports = {
   fetchArticle,
-  fetchArticles,
-  clearExpiredCache
+  fetchArticles
 };
