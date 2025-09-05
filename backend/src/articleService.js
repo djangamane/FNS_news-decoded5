@@ -55,7 +55,7 @@ async function fetchArticle(url, retries = 3) {
           'Referer': 'https://www.google.com/',
           'Upgrade-Insecure-Requests': '1',
         },
-        timeout: 10000,
+        timeout: 30000, // Increased to 30 seconds
         maxRedirects: 5
       });
 

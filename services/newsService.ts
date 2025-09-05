@@ -48,7 +48,12 @@ const fetchArticleText = async (url: string, fallbackText?: string): Promise<{ t
   const apiUrl = `${BACKEND_URL}/api/articles/fetch?url=${encodeURIComponent(realUrl)}`;
 
   try {
-    const response = await fetch(apiUrl);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 35000); // 35-second timeout
+
+    const response = await fetch(apiUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
       // This will catch 500 errors and other non-successful statuses
       throw new Error(`Backend API error: ${response.status} ${response.statusText}`);
