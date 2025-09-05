@@ -50,36 +50,26 @@ const fetchArticleText = async (url: string, fallbackText?: string): Promise<{ t
   try {
     const response = await fetch(apiUrl);
     if (!response.ok) {
+      // This will catch 500 errors and other non-successful statuses
       throw new Error(`Backend API error: ${response.status} ${response.statusText}`);
     }
     const result = await response.json();
-    if (!result.success || !result.data || !result.data.content) {
-      throw new Error('Invalid response from backend API');
+    // Check for a successful response structure and non-empty content
+    if (result.success && result.data?.content) {
+      const fetchedText = result.data.content.trim();
+      if (fetchedText) { // Ensure content is not just whitespace
+        return { text: fetchedText, imageUrl: result.data.imageUrl };
+      }
     }
-
-    let text = result.data.content;
-    // Basic text cleaning
-    text = text.replace(/^\s*[\n\t]+/gm, ''); // Remove leading newlines and tabs
-    text = text.replace(/[\n\t]+\s*$/gm, ''); // Remove trailing newlines and tabs
-    text = text.replace(/[\n\t]{2,}/g, '\n'); // Replace multiple newlines/tabs with single newline
-    text = text.replace(/\t/g, ''); // Remove remaining tabs
-    text = text.replace(/^\s+|\s+$/gm, ''); // Trim each line
-    text = text.replace(/\n\s+/g, '\n'); // Remove spaces after newlines
-    text = text.replace(/\s+\n/g, '\n'); // Remove spaces before newlines
-    text = text.replace(/\n{3,}/g, '\n\n'); // Max 2 consecutive newlines
-    text = text.trim();
-
-    if (text.length > 100) {
-      return { text, imageUrl: result.data.imageUrl };
-    } else if (fallbackText && fallbackText.length > 100) {
-      return { text: fallbackText };
-    }
+    // Throw if the response structure is invalid or content is empty
+    throw new Error('Invalid or empty content from backend API');
   } catch (error) {
-    console.error(`Error fetching article from backend:`, error);
-    // Fallback to provided text if available
-    if (fallbackText && fallbackText.trim().length > 0) {
-      return { text: fallbackText };
-    }
+    console.error(`Error fetching article from backend for url: ${realUrl}`, error);
+  }
+
+  // If the try block failed for any reason, try to use the fallback text
+  if (fallbackText && fallbackText.trim().length > 100) {
+    return { text: fallbackText.trim() };
   }
 
   return { text: 'Full article text could not be extracted.' };
