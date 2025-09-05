@@ -2,7 +2,8 @@
 export default {
   content: [
     "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
+    "./src/**/*.{js,ts,jsx,tsx}", // Scan all files in the src directory
+    "./src/components/**/*.{js,ts,jsx,tsx}", // Explicitly scan the components directory
   ],
   theme: {
     extend: {
