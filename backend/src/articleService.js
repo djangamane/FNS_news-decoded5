@@ -45,13 +45,11 @@ async function fetchArticle(url, retries = 3) {
       // Respectful delay
       await delay(1000 + Math.random() * 2000); // 1-3 seconds
 
-      const scraperApiUrl = `http://api.scraperapi.com?api_key=${process.env.SCRAPER_API_KEY}&url=${encodeURIComponent(url)}`;
+      // Enable JavaScript rendering and premium proxies for better success rate against services like Cloudflare
+      const scraperApiUrl = `http://api.scraperapi.com?api_key=${process.env.SCRAPER_API_KEY}&url=${encodeURIComponent(url)}&render=true&premium=true`;
 
       const response = await axios.get(scraperApiUrl, {
-        headers: {
-          'User-Agent': getNextUserAgent(),
-        },
-        timeout: 60000, // Increased to 60 seconds for proxy services
+        timeout: 120000, // Increased to 120 seconds for JS rendering
         maxRedirects: 5
       });
 
