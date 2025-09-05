@@ -49,11 +49,12 @@ async function fetchArticle(url, retries = 3) {
       // Respectful delay
       await delay(1000 + Math.random() * 2000); // 1-3 seconds
 
-      // Enable JavaScript rendering and premium proxies for better success rate against services like Cloudflare
-      const scraperApiUrl = `http://api.scraperapi.com?api_key=${process.env.SCRAPER_API_KEY}&url=${encodeURIComponent(url)}&render=true&ultra_premium=true`;
+      // Create a unique session for each fetch attempt to better mimic a real user session.
+      const sessionId = Math.random().toString(36).substring(2, 15);
+      const scraperApiUrl = `http://api.scraperapi.com?api_key=${process.env.SCRAPER_API_KEY}&url=${encodeURIComponent(url)}&render=true&ultra_premium=true&country_code=us&session_id=${sessionId}`;
 
       const response = await axios.get(scraperApiUrl, {
-        timeout: 120000, // Increased to 120 seconds for JS rendering
+        timeout: 120000, // 120 seconds for JS rendering with proxies
         maxRedirects: 5 // Allow ScraperAPI to follow redirects
       });
 

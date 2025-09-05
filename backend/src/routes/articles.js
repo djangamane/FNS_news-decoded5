@@ -89,7 +89,7 @@ router.post('/batch', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error in batch fetch:', error);
+    console.error('Error in batch fetch:', error.message || error);
     res.status(500).json({
       success: false,
       error: error.message
