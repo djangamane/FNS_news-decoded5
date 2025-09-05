@@ -77,13 +77,10 @@ async function fetchArticle(url, retries = 3) {
             const $ = cheerio.load(article.content);
             const img = $('img').first();
             if (img.length) {
-              imageUrl = img.attr('src');
-              if (imageUrl && !imageUrl.startsWith('http')) {
-                try {
-                  imageUrl = new URL(imageUrl, url).href;
-                } catch (e) {
-                  imageUrl = null;
-                }
+              const src = img.attr('src');
+              if (src) {
+                try { imageUrl = new URL(src, url).href; }
+                catch (e) { imageUrl = null; }
               }
             }
           }
@@ -147,12 +144,9 @@ async function fetchArticle(url, retries = 3) {
         const $ = cheerio.load(response.data);
         imageUrl = $('meta[property="og:image"]').attr('content') ||
                    $('meta[name="twitter:image"]').attr('content');
-        if (imageUrl && !imageUrl.startsWith('http')) {
-          try {
-            imageUrl = new URL(imageUrl, url).href;
-          } catch (e) {
-            imageUrl = null;
-          }
+        if (imageUrl) {
+          try { imageUrl = new URL(imageUrl, url).href; }
+          catch (e) { imageUrl = null; }
         }
       }
 
