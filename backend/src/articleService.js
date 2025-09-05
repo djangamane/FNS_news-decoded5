@@ -49,9 +49,10 @@ async function fetchArticle(url, retries = 3) {
         headers: {
           'User-Agent': getNextUserAgent(),
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.5',
-          'Accept-Encoding': 'gzip, deflate',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept-Encoding': 'gzip, deflate, br',
           'Connection': 'keep-alive',
+          'Referer': 'https://www.google.com/',
           'Upgrade-Insecure-Requests': '1',
         },
         timeout: 10000,
@@ -133,7 +134,14 @@ async function fetchArticle(url, retries = 3) {
                !trimmed.toLowerCase().includes('all rights reserved');
       });
 
-      const cleanedContent = paragraphs.join('\n\n').trim();
+      let cleanedContent = paragraphs.join('\n\n').trim();
+
+      // If our aggressive filtering removed everything, fall back to the original content
+      // to ensure we at least return something.
+      if (!cleanedContent && content.trim().length > 0) {
+        console.log(`Content filtering was too aggressive for ${url}. Falling back to unfiltered content.`);
+        cleanedContent = content.trim();
+      }
 
       if (!cleanedContent) {
         throw new Error('Could not extract meaningful content from the article.');
@@ -170,10 +178,10 @@ async function fetchArticle(url, retries = 3) {
       return articleData;
 
     } catch (error) {
-      console.error(`Attempt ${attempt + 1} failed for ${url}:`, error.message);
+      console.error(`Attempt ${attempt + 1} failed for ${url}:`, error);
 
       if (attempt === retries - 1) {
-        throw new Error(`Failed to fetch article after ${retries} attempts: ${error.message}`);
+        throw new Error(`Failed to fetch article after ${retries} attempts: ${error.stack || error.message}`);
       }
 
       // Exponential backoff
