@@ -1,27 +1,8 @@
 const axios = require('axios');
-const cheerio = require('cheerio');
-const { Readability } = require('@mozilla/readability');
-const { JSDOM } = require('jsdom');
 
 // In-memory cache
 const cache = new Map();
 const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
-
-// User agents for rotation
-const userAgents = [
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-];
-
-let currentUserAgentIndex = 0;
-
-// Get next user agent
-function getNextUserAgent() {
-  const userAgent = userAgents[currentUserAgentIndex];
-  currentUserAgentIndex = (currentUserAgentIndex + 1) % userAgents.length;
-  return userAgent;
-}
 
 // Delay function for respectful scraping
 function delay(ms) {
@@ -35,8 +16,8 @@ function isCacheValid(entry) {
 
 // Fetch article with retry logic
 async function fetchArticle(url, retries = 3) {
-  if (!process.env.SCRAPER_API_KEY) {
-    throw new Error('SCRAPER_API_KEY environment variable is not set.');
+  if (!process.env.FIRECRAWL_API_KEY) {
+    throw new Error('FIRECRAWL_API_KEY environment variable is not set.');
   }
 
   // Check cache first
@@ -49,113 +30,33 @@ async function fetchArticle(url, retries = 3) {
       // Respectful delay
       await delay(1000 + Math.random() * 2000); // 1-3 seconds
 
-      // Create a unique session for each fetch attempt to better mimic a real user session.
-      const sessionId = Math.random().toString(36).substring(2, 15);
-      const scraperApiUrl = `http://api.scraperapi.com?api_key=${process.env.SCRAPER_API_KEY}&url=${encodeURIComponent(url)}&render=true&ultra_premium=true&country_code=us&session_id=${sessionId}`;
-
-      const response = await axios.get(scraperApiUrl, {
-        timeout: 120000, // 120 seconds for JS rendering with proxies
-        maxRedirects: 5 // Allow ScraperAPI to follow redirects
+      // Use Firecrawl API to handle all scraping complexity
+      const response = await axios.post('https://api.firecrawl.dev/v0/scrape', {
+        url: url,
+        pageOptions: {
+          onlyMainContent: true // Ask Firecrawl to extract the main content
+        }
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.FIRECRAWL_API_KEY}`
+        },
+        timeout: 120000 // 120 seconds for JS rendering
       });
 
-      let title = 'Untitled';
-      let content = '';
-      let imageUrl = null;
-
-      // Try Readability first for better content extraction
-      try {
-        const dom = new JSDOM(response.data, { url });
-        const reader = new Readability(dom.window.document);
-        const article = reader.parse();
-
-        if (article) {
-          title = article.title || 'Untitled';
-          content = article.textContent || '';
-
-          // Extract image from Readability content
-          if (article.content) {
-            const $ = cheerio.load(article.content);
-            const img = $('img').first();
-            if (img.length) {
-              const src = img.attr('src');
-              if (src) {
-                try { imageUrl = new URL(src, url).href; }
-                catch (e) { imageUrl = null; }
-              }
-            }
-          }
-        } else {
-          throw new Error('Readability failed to parse');
-        }
-      } catch (readabilityError) {
-        console.log('Readability failed, falling back to cheerio extraction:', readabilityError.message);
-
-        // Fallback to cheerio-based extraction
-        const $ = cheerio.load(response.data);
-
-        // Extract title
-        title = $('meta[property="og:title"]').attr('content') ||
-                $('meta[name="title"]').attr('content') ||
-                $('title').text() ||
-                $('article h1').first().text() ||
-                $('h1').first().text() ||
-                'Untitled';
-
-        // Find main content container
-        let contentElement = $('article').first();
-        if (!contentElement.length) {
-          contentElement = $('main').first();
-        }
-        if (!contentElement.length) {
-          contentElement = $('body');
-        }
-
-        // Remove unwanted elements
-        contentElement.find('nav, aside, footer, header, .ad, .ads, .advertisement, .related, .comments, .social-share, .newsletter, .sidebar, .popup, .modal, .banner').remove();
-
-        // Extract text from relevant elements
-        // Extract text from relevant elements, preserving paragraph breaks
-        content = contentElement.find('p, h1, h2, h3, h4, h5, h6, li').map((i, el) => $(el).text().trim()).get().join('\n\n');
-
+      if (!response.data || !response.data.success || !response.data.data) {
+        throw new Error('Firecrawl API did not return successful data.');
       }
 
-      // Additional filtering: remove very short paragraphs (likely ads or navigation)
-      const paragraphs = content.split('\n\n').filter(p => {
-        const trimmed = p.trim();
-        return trimmed.length > 50 && // Minimum length
-               !trimmed.toLowerCase().includes('subscribe') &&
-               !trimmed.toLowerCase().includes('newsletter') &&
-               !trimmed.toLowerCase().includes('advertisement') &&
-               !trimmed.toLowerCase().includes('related articles') &&
-               !trimmed.toLowerCase().includes('share this') &&
-               !trimmed.toLowerCase().includes('follow us') &&
-               !trimmed.toLowerCase().includes('copyright') &&
-               !trimmed.toLowerCase().includes('all rights reserved');
-      });
+      const firecrawlData = response.data.data;
+      const cleanedContent = firecrawlData.markdown || firecrawlData.content || '';
 
-      let cleanedContent = paragraphs.join('\n\n').trim();
-
-      // If our aggressive filtering removed everything, fall back to the original content
-      // to ensure we at least return something.
-      if (!cleanedContent && content.trim().length > 0) {
-        console.log(`Content filtering was too aggressive for ${url}. Falling back to unfiltered content.`);
-        cleanedContent = content.trim();
-      }
-
-      if (!cleanedContent) {
+      if (!cleanedContent.trim()) {
         throw new Error('Could not extract meaningful content from the article.');
       }
 
-      // Fallback to meta tags if Readability didn't find an image
-      if (!imageUrl) {
-        const $ = cheerio.load(response.data);
-        imageUrl = $('meta[property="og:image"]').attr('content') ||
-                   $('meta[name="twitter:image"]').attr('content');
-        if (imageUrl) {
-          try { imageUrl = new URL(imageUrl, url).href; }
-          catch (e) { imageUrl = null; }
-        }
-      }
+      const title = firecrawlData.metadata?.title || 'Untitled';
+      const imageUrl = firecrawlData.metadata?.ogImage || null;
 
       const excerpt = cleanedContent.substring(0, 300) + (cleanedContent.length > 300 ? '...' : '');
 
@@ -178,13 +79,14 @@ async function fetchArticle(url, retries = 3) {
 
     } catch (error) {
       // Only log the message and data to avoid exposing the API key in the full error object
-      const errorMessage = error.response?.data || error.message;
+      const errorMessage = error.response?.data?.error || error.message;
       console.error(`Attempt ${attempt + 1} failed for ${url}: ${errorMessage}`);
 
       if (attempt === retries - 1) {
-        let finalMessage = `Failed to fetch article after ${retries} attempts: ${error.message}`;
-        if (error.response && error.response.data) {
-          finalMessage += ` | ScraperAPI Response: ${error.response.data}`;
+        let finalMessage = `Failed to fetch article after ${retries} attempts for url: ${url}. Error: ${error.message}`;
+        if (error.response?.data) {
+          // Include the response from the proxy to make debugging easier
+          finalMessage += ` | Proxy Response: ${error.response.data}`;
         }
         const finalError = new Error(finalMessage);
         throw finalError;
