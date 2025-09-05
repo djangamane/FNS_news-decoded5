@@ -51,6 +51,7 @@ const App: React.FC = () => {
         return <ArticleDetail article={selectedArticle} onBack={handleBack} />;
     }
     if (articles.length > 0) {
+        console.log("Rendering NewsCarousel with articles:", articles);
         return <NewsCarousel articles={articles} onSelectArticle={handleSelectArticle} />;
     }
     return <p className="text-center text-gray-400">No articles found.</p>;

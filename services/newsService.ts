@@ -163,7 +163,10 @@ export const fetchTopStories = async (): Promise<Article[]> => {
       const realUrl = extractRealUrl(article.url);
       const fetchedDetails = fetchedDetailsMap.get(realUrl);
 
-      const fullText = fetchedDetails?.text || article.full_text || 'Full article text could not be extracted.';
+      // Prioritize fetched text, but fall back gracefully to the text from the JSON file.
+      const fullText = (fetchedDetails?.text && fetchedDetails.text.length > 100) 
+        ? fetchedDetails.text 
+        : (article.full_text || 'Full article text could not be extracted.');
       const imageUrl = fetchedDetails?.imageUrl || article.image_url || `https://picsum.photos/seed/${encodeURIComponent(article.title || 'fallback')}/${600 + index}/400`;
 
       return {
