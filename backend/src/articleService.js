@@ -35,6 +35,10 @@ function isCacheValid(entry) {
 
 // Fetch article with retry logic
 async function fetchArticle(url, retries = 3) {
+  if (!process.env.SCRAPER_API_KEY) {
+    throw new Error('SCRAPER_API_KEY environment variable is not set.');
+  }
+
   // Check cache first
   if (cache.has(url) && isCacheValid(cache.get(url))) {
     return cache.get(url).data;
@@ -50,7 +54,7 @@ async function fetchArticle(url, retries = 3) {
 
       const response = await axios.get(scraperApiUrl, {
         timeout: 120000, // Increased to 120 seconds for JS rendering
-        maxRedirects: 5
+        maxRedirects: 5 // Allow ScraperAPI to follow redirects
       });
 
       let title = 'Untitled';
@@ -175,7 +179,12 @@ async function fetchArticle(url, retries = 3) {
       console.error(`Attempt ${attempt + 1} failed for ${url}:`, error);
 
       if (attempt === retries - 1) {
-        throw new Error(`Failed to fetch article after ${retries} attempts: ${error.stack || error.message}`);
+        let finalMessage = `Failed to fetch article after ${retries} attempts: ${error.message}`;
+        if (error.response && error.response.data) {
+          finalMessage += `\nScraperAPI Response: ${error.response.data}`;
+        }
+        const finalError = new Error(finalMessage);
+        throw finalError;
       }
 
       // Exponential backoff
