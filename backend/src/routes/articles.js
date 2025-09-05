@@ -110,8 +110,9 @@ router.get('/version', (req, res) => {
 router.get('/health', (req, res) => {
   res.json({
     status: 'OK',
-    timestamp: new Date().toISOString(),
-    service: 'Article Fetching Service'
+    version: '2.1.0-firecrawl-debug', // A unique string to verify deployment
+    service: 'Article Fetching Service',
+    timestamp: new Date().toISOString()
   });
 });
 
