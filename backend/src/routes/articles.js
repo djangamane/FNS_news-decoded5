@@ -97,6 +97,15 @@ router.post('/batch', async (req, res) => {
   }
 });
 
+// Version check endpoint
+router.get('/version', (req, res) => {
+  res.json({
+    service: 'FNS News Backend',
+    version: '2.0.0-firecrawl', // A unique string for this version
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Health check endpoint
 router.get('/health', (req, res) => {
   res.json({
