@@ -31,7 +31,7 @@ router.get('/fetch', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching article:', error);
+    console.error('Error fetching article:', error.message);
     res.status(500).json({
       success: false,
       error: error.message

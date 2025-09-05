@@ -50,7 +50,7 @@ async function fetchArticle(url, retries = 3) {
       await delay(1000 + Math.random() * 2000); // 1-3 seconds
 
       // Enable JavaScript rendering and premium proxies for better success rate against services like Cloudflare
-      const scraperApiUrl = `http://api.scraperapi.com?api_key=${process.env.SCRAPER_API_KEY}&url=${encodeURIComponent(url)}&render=true&premium=true`;
+      const scraperApiUrl = `http://api.scraperapi.com?api_key=${process.env.SCRAPER_API_KEY}&url=${encodeURIComponent(url)}&render=true&ultra_premium=true`;
 
       const response = await axios.get(scraperApiUrl, {
         timeout: 120000, // Increased to 120 seconds for JS rendering
