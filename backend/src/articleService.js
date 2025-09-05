@@ -176,12 +176,14 @@ async function fetchArticle(url, retries = 3) {
       return articleData;
 
     } catch (error) {
-      console.error(`Attempt ${attempt + 1} failed for ${url}:`, error);
+      // Only log the message and data to avoid exposing the API key in the full error object
+      const errorMessage = error.response?.data || error.message;
+      console.error(`Attempt ${attempt + 1} failed for ${url}: ${errorMessage}`);
 
       if (attempt === retries - 1) {
         let finalMessage = `Failed to fetch article after ${retries} attempts: ${error.message}`;
         if (error.response && error.response.data) {
-          finalMessage += `\nScraperAPI Response: ${error.response.data}`;
+          finalMessage += ` | ScraperAPI Response: ${error.response.data}`;
         }
         const finalError = new Error(finalMessage);
         throw finalError;
