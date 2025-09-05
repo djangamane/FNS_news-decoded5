@@ -45,17 +45,13 @@ async function fetchArticle(url, retries = 3) {
       // Respectful delay
       await delay(1000 + Math.random() * 2000); // 1-3 seconds
 
-      const response = await axios.get(url, {
+      const scraperApiUrl = `http://api.scraperapi.com?api_key=${process.env.SCRAPER_API_KEY}&url=${encodeURIComponent(url)}`;
+
+      const response = await axios.get(scraperApiUrl, {
         headers: {
           'User-Agent': getNextUserAgent(),
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'Connection': 'keep-alive',
-          'Referer': 'https://www.google.com/',
-          'Upgrade-Insecure-Requests': '1',
         },
-        timeout: 30000, // Increased to 30 seconds
+        timeout: 60000, // Increased to 60 seconds for proxy services
         maxRedirects: 5
       });
 
