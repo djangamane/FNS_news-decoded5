@@ -1,14 +1,15 @@
+import React, { useState, useEffect, useCallback } from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Article } from "./types";
+import { fetchTopStories } from "./services/newsService";
+import NewsCarousel from "./components/NewsCarousel";
+import ArticleDetail from "./components/ArticleDetail";
+import Header from "./components/Header";
+import Footer from "./components/Footer";
+import LoadingSpinner from "./components/LoadingSpinner";
+import Admin from "./components/Admin";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Article } from './types';
-import { fetchTopStories } from './services/newsService';
-import NewsCarousel from './components/NewsCarousel';
-import ArticleDetail from './components/ArticleDetail';
-import Header from './components/Header';
-import Footer from './components/Footer';
-import LoadingSpinner from './components/LoadingSpinner';
-
-const App: React.FC = () => {
+const MainApp: React.FC = () => {
   const [articles, setArticles] = useState<Article[]>([]);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [isInitiallyLoading, setIsInitiallyLoading] = useState<boolean>(true);
@@ -21,7 +22,9 @@ const App: React.FC = () => {
       const topStories = await fetchTopStories();
       setArticles(topStories);
     } catch (err) {
-      setError('Could not retrieve news stories. The source repository might be temporarily unavailable or the data format is incorrect.');
+      setError(
+        "Could not retrieve news stories. The source repository might be temporarily unavailable or the data format is incorrect.",
+      );
       console.error(err);
     } finally {
       setIsInitiallyLoading(false);
@@ -42,20 +45,33 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     if (isInitiallyLoading) {
-        return <div className="flex justify-center items-center h-64"><LoadingSpinner message="Loading Stories..." /></div>;
+      return (
+        <div className="flex justify-center items-center h-64">
+          <LoadingSpinner message="Loading Stories..." />
+        </div>
+      );
     }
     if (error) {
-        return <p className="text-center text-red-400 bg-red-900/30 p-4 rounded-lg">{error}</p>;
+      return (
+        <p className="text-center text-red-400 bg-red-900/30 p-4 rounded-lg">
+          {error}
+        </p>
+      );
     }
     if (selectedArticle) {
-        return <ArticleDetail article={selectedArticle} onBack={handleBack} />;
+      return <ArticleDetail article={selectedArticle} onBack={handleBack} />;
     }
     if (articles.length > 0) {
-        console.log("Rendering NewsCarousel with articles:", articles);
-        return <NewsCarousel articles={articles} onSelectArticle={handleSelectArticle} />;
+      console.log("Rendering NewsCarousel with articles:", articles);
+      return (
+        <NewsCarousel
+          articles={articles}
+          onSelectArticle={handleSelectArticle}
+        />
+      );
     }
     return <p className="text-center text-gray-400">No articles found.</p>;
-  }
+  };
 
   return (
     <div className="min-h-screen bg-black text-green-400 font-mono flex flex-col relative overflow-hidden">
@@ -81,6 +97,17 @@ const App: React.FC = () => {
       </main>
       <Footer />
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<MainApp />} />
+        <Route path="/admin" element={<Admin />} />
+      </Routes>
+    </Router>
   );
 };
 

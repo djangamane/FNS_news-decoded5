@@ -12,6 +12,11 @@ export interface Article {
 export interface ArticleAnalysis {
   score: number;
   analysisSummary: string;
-  detectedTerms: string[];
+  detectedTerms: DetectedTerm[];
   keishaTranslation: string;
+}
+
+export interface DetectedTerm {
+  term: string;
+  explanation: string;
 }
