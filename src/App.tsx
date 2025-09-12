@@ -9,40 +9,21 @@ import Footer from "./components/Footer";
 import LoadingSpinner from "./components/LoadingSpinner";
 import Admin from "./components/Admin";
 
-const MainApp: React.FC = () => {
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
-  const [isInitiallyLoading, setIsInitiallyLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadStories = useCallback(async () => {
-    setIsInitiallyLoading(true);
-    setError(null);
-    try {
-      const topStories = await fetchTopStories();
-      setArticles(topStories);
-    } catch (err) {
-      setError(
-        "Could not retrieve news stories. The source repository might be temporarily unavailable or the data format is incorrect.",
-      );
-      console.error(err);
-    } finally {
-      setIsInitiallyLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadStories();
-  }, [loadStories]);
-
-  const handleSelectArticle = (article: Article) => {
-    setSelectedArticle(article);
-  };
-
-  const handleBack = () => {
-    setSelectedArticle(null);
-  };
-
+const MainApp: React.FC<{
+  articles: Article[];
+  selectedArticle: Article | null;
+  isInitiallyLoading: boolean;
+  error: string | null;
+  handleSelectArticle: (article: Article) => void;
+  handleBack: () => void;
+}> = ({
+  articles,
+  selectedArticle,
+  isInitiallyLoading,
+  error,
+  handleSelectArticle,
+  handleBack,
+}) => {
   const renderContent = () => {
     if (isInitiallyLoading) {
       return (
@@ -102,10 +83,53 @@ const MainApp: React.FC = () => {
 
 const App: React.FC = () => {
   const [articles, setArticles] = useState<Article[]>([]);
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  const [isInitiallyLoading, setIsInitiallyLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadStories = useCallback(async () => {
+    setIsInitiallyLoading(true);
+    setError(null);
+    try {
+      const topStories = await fetchTopStories();
+      setArticles(topStories);
+    } catch (err) {
+      setError(
+        "Could not retrieve news stories. The source repository might be temporarily unavailable or the data format is incorrect.",
+      );
+      console.error(err);
+    } finally {
+      setIsInitiallyLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadStories();
+  }, [loadStories]);
+
+  const handleSelectArticle = (article: Article) => {
+    setSelectedArticle(article);
+  };
+
+  const handleBack = () => {
+    setSelectedArticle(null);
+  };
 
   return (
     <Routes>
-      <Route path="/" element={<MainApp />} />
+      <Route
+        path="/"
+        element={
+          <MainApp
+            articles={articles}
+            selectedArticle={selectedArticle}
+            isInitiallyLoading={isInitiallyLoading}
+            error={error}
+            handleSelectArticle={handleSelectArticle}
+            handleBack={handleBack}
+          />
+        }
+      />
       <Route
         path="/admin"
         element={<Admin articles={articles} setArticles={setArticles} />}
