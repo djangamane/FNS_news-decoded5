@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Article } from '../types';
-import { decodeArticle, newsService } from '../services';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Article, ArticleAnalysis } from "../types";
+import { decodeArticle, newsService } from "../services";
+import DecodeConfirmationDialog from "./DecodeConfirmationDialog";
 
 interface AdminProps {
   articles: Article[];
@@ -11,6 +12,10 @@ interface AdminProps {
 const Admin: React.FC<AdminProps> = ({ articles, setArticles }) => {
   const [isDecoding, setIsDecoding] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedAnalysis, setSelectedAnalysis] =
+    useState<ArticleAnalysis | null>(null);
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  const [isSending, setIsSending] = useState<boolean>(false);
   const navigate = useNavigate();
 
   const handleDecode = async (article: Article) => {
@@ -18,17 +23,71 @@ const Admin: React.FC<AdminProps> = ({ articles, setArticles }) => {
     setError(null);
     try {
       const result = await decodeArticle(article.fullText);
-      const updatedArticles = articles.map((a) =>
-        a.id === article.id ? { ...a, analysis: result } : a
-      );
-      setArticles(updatedArticles);
-      await newsService.updateArticleAnalysis(article, result);
+      setSelectedAnalysis(result);
+      setSelectedArticle(article);
     } catch (err) {
-      setError('The AI agent failed to decode the article. Please try again.');
+      setError("The AI agent failed to decode the article. Please try again.");
       console.error(err);
     } finally {
       setIsDecoding(null);
     }
+  };
+
+  const handleConfirmSend = async () => {
+    if (!selectedAnalysis || !selectedArticle) return;
+
+    setIsSending(true);
+    setError(null);
+
+    try {
+      const webhookUrl =
+        "https://hook.us2.make.com/3igfwpnqrrwutsawycv1dhrdix9ln2au";
+      const payload = {
+        title: selectedArticle.title,
+        source: selectedArticle.source,
+        url: selectedArticle.url,
+        keishaTranslation: selectedAnalysis.keishaTranslation,
+        biasScore: selectedAnalysis.score,
+        analysisSummary: selectedAnalysis.analysisSummary,
+        detectedTerms: selectedAnalysis.detectedTerms,
+        timestamp: new Date().toISOString(),
+      };
+
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const updatedArticles = articles.map((a) =>
+        a.id === selectedArticle.id ? { ...a, analysis: selectedAnalysis } : a,
+      );
+      setArticles(updatedArticles);
+      await newsService.updateArticleAnalysis(
+        selectedArticle,
+        selectedAnalysis,
+      );
+      setSelectedAnalysis(null);
+      setSelectedArticle(null);
+    } catch (err) {
+      setError(
+        `Failed to send to social media: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
+      console.error(err);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleCancelSend = () => {
+    setSelectedAnalysis(null);
+    setSelectedArticle(null);
   };
 
   return (
@@ -53,7 +112,7 @@ const Admin: React.FC<AdminProps> = ({ articles, setArticles }) => {
             Admin Dashboard
           </h1>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate("/")}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
           >
             Back to Main Site
@@ -84,13 +143,22 @@ const Admin: React.FC<AdminProps> = ({ articles, setArticles }) => {
                   disabled={isDecoding === article.id}
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-black font-bold rounded transition-colors"
                 >
-                  {isDecoding === article.id ? 'Decoding...' : 'Decode'}
+                  {isDecoding === article.id ? "Decoding..." : "Decode"}
                 </button>
               </div>
             ))}
           </div>
         </div>
       </div>
+
+      {selectedAnalysis && (
+        <DecodeConfirmationDialog
+          analysis={selectedAnalysis}
+          onConfirm={handleConfirmSend}
+          onCancel={handleCancelSend}
+          isSending={isSending}
+        />
+      )}
     </div>
   );
 };
