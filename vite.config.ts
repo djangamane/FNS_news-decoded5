@@ -8,6 +8,7 @@ export default defineConfig({
         target: "https://fns-news.onrender.com",
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => path.replace(/^\/api/, ""),
       },
     },
   },
