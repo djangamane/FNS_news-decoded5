@@ -1,7 +1,7 @@
 import { Article, ArticleAnalysis } from "../types";
 import { supabase } from "./supabaseClient";
 
-const BACKEND_URL = "/api";
+const BACKEND_URL = "https://fns-news.onrender.com";
 
 /**
  * Extracts a user-friendly source name from a URL.
@@ -50,7 +50,7 @@ const fetchBatchArticleDetails = async (
     return new Map();
   }
 
-  const apiUrl = `${BACKEND_URL}/articles/batch`;
+  const apiUrl = `${BACKEND_URL}/api/articles/batch`;
   try {
     const response = await fetch(apiUrl, {
       method: "POST",
@@ -93,7 +93,7 @@ const fetchArticleText = async (
   fallbackText?: string,
 ): Promise<{ text: string; imageUrl?: string }> => {
   const realUrl = extractRealUrl(url);
-  const apiUrl = `${BACKEND_URL}/articles/fetch?url=${encodeURIComponent(realUrl)}`;
+  const apiUrl = `${BACKEND_URL}/api/articles/fetch?url=${encodeURIComponent(realUrl)}`;
 
   try {
     const controller = new AbortController();
