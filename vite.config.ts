@@ -5,10 +5,9 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "https://fns-news.onrender.com",
+        target: "https://fns-news.onrender.com/api",
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api/, ""),
       },
     },
   },
