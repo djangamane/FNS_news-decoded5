@@ -59,8 +59,9 @@ const fetchBatchArticleDetails = async (
     });
 
     if (!response.ok) {
+      const errorBody = await response.text();
       throw new Error(
-        `Backend batch API error: ${response.status} ${response.statusText}`,
+        `Backend batch API error: ${response.status} ${response.statusText} - ${errorBody}`,
       );
     }
 
