@@ -1,7 +1,16 @@
 const axios = require("axios");
 
+const cache = new Map();
+
 // Fetch article with retry logic
 async function fetchArticle(url, retries = 3) {
+  if (cache.has(url)) {
+    const cachedData = cache.get(url);
+    if (cachedData.expiry > Date.now()) {
+      return cachedData.data;
+    }
+  }
+
   if (!process.env.FIRECRAWL_API_KEY) {
     throw new Error("FIRECRAWL_API_KEY environment variable is not set.");
   }
@@ -60,6 +69,8 @@ async function fetchArticle(url, retries = 3) {
         imageUrl,
         fetchedAt: new Date().toISOString(),
       };
+
+      cache.set(url, { data: articleData, expiry: Date.now() + 3600000 }); // Cache for 1 hour
 
       return articleData;
     } catch (error) {
