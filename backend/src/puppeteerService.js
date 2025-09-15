@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer');
 
 async function scrapeArticle(url) {
   let browser = null;
@@ -6,6 +6,7 @@ async function scrapeArticle(url) {
     console.log(`Scraping article from: ${url}`);
     
     // Launch browser with optimized settings for cloud environments
+    // With the full 'puppeteer' package, executablePath is handled automatically.
     const launchOptions = {
       headless: 'new',
       args: [
@@ -19,30 +20,6 @@ async function scrapeArticle(url) {
         '--disable-gpu'
       ]
     };
-
-    // Try to use system Chrome if available (common in cloud environments)
-    const possibleChromePaths = [
-      process.env.CHROME_PATH,
-      '/usr/bin/google-chrome',
-      '/usr/bin/chromium-browser',
-      '/opt/render/.cache/puppeteer/chrome/linux-121.0.6167.85/chrome',
-      '/opt/render/.cache/puppeteer/chrome-headless-shell/linux-121.0.6167.85/chrome-headless-shell'
-    ];
-
-    for (const chromePath of possibleChromePaths) {
-      if (chromePath) {
-        try {
-          const fs = require('fs');
-          if (fs.existsSync(chromePath)) {
-            launchOptions.executablePath = chromePath;
-            console.log(`Using Chrome executable at: ${chromePath}`);
-            break;
-          }
-        } catch (e) {
-          // Continue to next path
-        }
-      }
-    }
 
     browser = await puppeteer.launch(launchOptions);
 
@@ -148,36 +125,6 @@ async function scrapeArticle(url) {
   }
 }
 
-// Fallback function using article-extractor for sites that block Puppeteer
-async function scrapeArticleWithFallback(url) {
-  try {
-    // First try Puppeteer
-    return await scrapeArticle(url);
-  } catch (puppeteerError) {
-    console.log(`Puppeteer failed for ${url}, trying article-extractor fallback...`);
-    
-    try {
-      const { extractData } = require("article-extractor");
-      const article = await extractData(url);
-      
-      if (!article || !article.textContent) {
-        throw new Error("Could not extract meaningful content from the article.");
-      }
-
-      return {
-        title: article.title || "Untitled Article",
-        textContent: article.textContent,
-        imageUrl: article.imageUrl
-      };
-    } catch (fallbackError) {
-      console.error(`Both Puppeteer and article-extractor failed for: ${url}`);
-      console.error(`Fallback error details:`, fallbackError);
-      throw new Error(`Failed to scrape article: ${fallbackError.message}`);
-    }
-  }
-}
-
 module.exports = { 
   scrapeArticle,
-  scrapeArticleWithFallback 
 };

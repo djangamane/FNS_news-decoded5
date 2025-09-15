@@ -1,10 +1,10 @@
-const { scrapeArticleWithFallback } = require("./puppeteerService");
+const { scrapeArticle } = require("./puppeteerService");
 
 // Fetch article with retry logic
 async function fetchArticle(url, retries = 3) {
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      const articleData = await scrapeArticleWithFallback(url);
+      const articleData = await scrapeArticle(url);
 
       if (!articleData.textContent || articleData.textContent.length < 200) {
         throw new Error(

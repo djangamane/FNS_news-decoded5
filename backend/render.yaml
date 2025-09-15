@@ -12,4 +12,6 @@ services:
       - key: ADMIN_PASSWORD
         generateValue: true
       - key: CORS_ORIGIN
-        value: https://fragile-news-source.vercel.app
+        value: https://fns-news-decoded5.vercel.app
+      - key: CHROME_PATH
+        value: /usr/bin/chromium-browser
