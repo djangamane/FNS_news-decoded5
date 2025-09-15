@@ -2,7 +2,7 @@ services:
   - type: web
     name: fns-backend
     runtime: node
-    buildCommand: npm install
+    buildCommand: PUPPETEER_SKIP_DOWNLOAD=true npm install
     startCommand: npm start
     envVars:
       - key: NODE_ENV

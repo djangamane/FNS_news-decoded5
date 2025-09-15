@@ -1,12 +1,12 @@
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 
 async function scrapeArticle(url) {
   let browser = null;
   try {
     console.log(`Scraping article from: ${url}`);
     
-    // Launch browser with optimized settings
-    browser = await puppeteer.launch({
+    // Launch browser with optimized settings for cloud environments
+    const launchOptions = {
       headless: 'new',
       args: [
         '--no-sandbox',
@@ -18,7 +18,33 @@ async function scrapeArticle(url) {
         '--single-process',
         '--disable-gpu'
       ]
-    });
+    };
+
+    // Try to use system Chrome if available (common in cloud environments)
+    const possibleChromePaths = [
+      process.env.CHROME_PATH,
+      '/usr/bin/google-chrome',
+      '/usr/bin/chromium-browser',
+      '/opt/render/.cache/puppeteer/chrome/linux-121.0.6167.85/chrome',
+      '/opt/render/.cache/puppeteer/chrome-headless-shell/linux-121.0.6167.85/chrome-headless-shell'
+    ];
+
+    for (const chromePath of possibleChromePaths) {
+      if (chromePath) {
+        try {
+          const fs = require('fs');
+          if (fs.existsSync(chromePath)) {
+            launchOptions.executablePath = chromePath;
+            console.log(`Using Chrome executable at: ${chromePath}`);
+            break;
+          }
+        } catch (e) {
+          // Continue to next path
+        }
+      }
+    }
+
+    browser = await puppeteer.launch(launchOptions);
 
     const page = await browser.newPage();
     
