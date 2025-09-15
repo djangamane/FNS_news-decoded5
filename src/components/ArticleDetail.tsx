@@ -83,6 +83,8 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, onBack }) => {
     </div>
   );
 
+  console.log("fullText:", article.fullText);
+
   return (
     <div className="animate-fade-in-cyber">
       <button
