@@ -6,10 +6,9 @@ async function fetchArticle(url, retries = 3) {
     try {
       const articleData = await scrapeArticle(url);
 
-      if (!articleData.textContent || articleData.textContent.length < 200) {
-        throw new Error(
-          `Could not extract meaningful content from the article. Content length: ${articleData.textContent?.length || 0} characters`,
-        );
+      if (!articleData.textContent) {
+        // Only fail if the scraper returned no text at all.
+        throw new Error("Scraped article has no text content.");
       }
 
       return {
