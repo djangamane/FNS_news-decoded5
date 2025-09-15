@@ -1,127 +1,56 @@
-const puppeteer = require('puppeteer');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+// 1. Initialize the Gemini client with the API key from environment variables
+if (!process.env.GEMINI_API_KEY) {
+  throw new Error("GEMINI_API_KEY environment variable not set.");
+}
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
 
 async function scrapeArticle(url) {
-  let browser = null;
+  console.log(`Scraping article from: ${url} using Gemini`);
+
+  // 2. Use the detailed prompt you designed to instruct the AI
+  const prompt = `
+    You are a specialized web scraping agent. Your purpose is to navigate to the provided URL, intelligently identify and extract its core content, and return the data in a structured JSON format.
+
+    URL to scrape: ${url}
+
+    Perform the following tasks:
+    1.  **Navigate and Prepare:** Navigate to the URL and wait for the page to fully load.
+    2.  **Identify Main Content Container:** Find the main HTML element containing the article body. Prioritize selectors like 'article', 'main', '[role="main"]'.
+    3.  **Extract Core Data:**
+        *   **Title:** Extract the article's title from the H1 or title tag.
+        *   **Image URL:** Extract the main image URL from 'og:image' or 'twitter:image' meta tags, or the first large image.
+        *   **Text Content:** Extract all text from the main content container.
+    4.  **Clean the Text Content:** Remove noisy elements like navs, footers, ads, and comments. Consolidate whitespace.
+    5.  **Format and Return:** Return a single JSON object with the keys "title", "textContent", and "imageUrl". The JSON must be a string inside a markdown code block like this: \`\`\`json\n{...}\n\`\`\`
+    
+    If scraping fails or no meaningful content is found, return a JSON object with null values for the fields.
+  `;
+
   try {
-    console.log(`Scraping article from: ${url}`);
-    
-    // Launch browser with optimized settings for cloud environments
-    // With the full 'puppeteer' package, executablePath is handled automatically.
-    const launchOptions = {
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
-        '--disable-gpu'
-      ]
-    };
+    // 3. Call the model and get the response
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
 
-    browser = await puppeteer.launch(launchOptions);
+    // 4. Extract the JSON from the model's markdown response
+    const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
+    if (!jsonMatch || !jsonMatch[1]) {
+      console.error("Gemini response did not contain a valid JSON block:", text);
+      throw new Error("Failed to parse article data from AI response.");
+    }
 
-    const page = await browser.newPage();
-    
-    // Set user agent to avoid bot detection
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-    
-    // Set viewport
-    await page.setViewport({ width: 1280, height: 800 });
-    
-    // Navigate to the URL with timeout
-    await page.goto(url, { 
-      waitUntil: 'networkidle0', 
-      timeout: 30000 
-    });
-
-    // Wait for content to load
-    await page.waitForSelector('body', { timeout: 10000 });
-
-    // Extract article content using multiple strategies
-    const articleData = await page.evaluate(() => {
-      // Try to find main article content using common selectors
-      const selectors = [
-        'article',
-        'main',
-        '[role="main"]',
-        '.article-content',
-        '.post-content',
-        '.entry-content',
-        '.story-content',
-        '.content',
-        '.main-content',
-        '#content'
-      ];
-
-      let contentElement = null;
-      
-      // Try each selector in order
-      for (const selector of selectors) {
-        const element = document.querySelector(selector);
-        if (element && element.textContent.trim().length > 500) {
-          contentElement = element;
-          break;
-        }
-      }
-
-      // Fallback: use body if no specific content element found
-      if (!contentElement) {
-        contentElement = document.body;
-      }
-
-      // Remove unwanted elements (ads, navigation, etc.)
-      const unwantedSelectors = [
-        'nav', 'header', 'footer', 'aside', 
-        '.ad', '.advertisement', '.banner',
-        '.social-share', '.share-buttons',
-        '.comments', '.related-articles',
-        'script', 'style', 'iframe'
-      ];
-
-      unwantedSelectors.forEach(selector => {
-        const elements = contentElement.querySelectorAll(selector);
-        elements.forEach(el => el.remove());
-      });
-
-      // Get clean text content
-      const textContent = contentElement.textContent
-        .replace(/\s+/g, ' ')
-        .trim();
-
-      // Get title
-      const title = document.querySelector('h1')?.textContent?.trim() || 
-                   document.title || 
-                   'Untitled Article';
-
-      // Get image
-      const imageElement = document.querySelector('meta[property="og:image"]') || 
-                          document.querySelector('meta[name="twitter:image"]') ||
-                          document.querySelector('img');
-      const imageUrl = imageElement?.content || imageElement?.src || null;
-
-      return {
-        title,
-        textContent,
-        imageUrl
-      };
-    });
+    const articleData = JSON.parse(jsonMatch[1]);
 
     console.log(`Successfully scraped article from: ${url}`);
-    console.log(`Title: ${articleData.title}`);
-    console.log(`Content length: ${articleData.textContent.length} characters`);
+    console.log(`Title: ${articleData.title}, Content length: ${articleData.textContent?.length || 0}`);
 
     return articleData;
-
   } catch (error) {
-    console.error(`Error scraping article from: ${url}`, error);
+    console.error(`Error scraping article with Gemini from: ${url}`, error);
     throw error;
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
   }
 }
 

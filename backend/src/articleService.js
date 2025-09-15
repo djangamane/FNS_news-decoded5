@@ -1,4 +1,4 @@
-const { scrapeArticle } = require("./puppeteerService");
+const { scrapeArticle } = require("./aiScrapingService");
 
 // In-memory cache with a Time-To-Live (TTL) to keep articles fresh.
 const articleCache = new Map();
