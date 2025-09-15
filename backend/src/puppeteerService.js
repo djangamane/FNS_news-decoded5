@@ -131,20 +131,21 @@ async function scrapeArticleWithFallback(url) {
     console.log(`Puppeteer failed for ${url}, trying article-extractor fallback...`);
     
     try {
-      const { extract } = require("article-extractor");
-      const article = await extract(url);
+      const { extractData } = require("article-extractor");
+      const article = await extractData(url);
       
-      if (!article.textContent) {
+      if (!article || !article.textContent) {
         throw new Error("Could not extract meaningful content from the article.");
       }
 
       return {
-        title: article.title,
+        title: article.title || "Untitled Article",
         textContent: article.textContent,
         imageUrl: article.imageUrl
       };
     } catch (fallbackError) {
       console.error(`Both Puppeteer and article-extractor failed for: ${url}`);
+      console.error(`Fallback error details:`, fallbackError);
       throw new Error(`Failed to scrape article: ${fallbackError.message}`);
     }
   }
