@@ -80,6 +80,7 @@ const fetchBatchArticleDetails = async (
     return detailsMap;
   } catch (error) {
     console.error("Error in fetchBatchArticleDetails:", error);
+    console.error("URLs that failed batch fetch:", urls);
     return new Map(); // Return empty map on failure to prevent crashing Promise.all
   }
 };
@@ -125,6 +126,7 @@ const fetchArticleText = async (
       `Error fetching article from backend for url: ${realUrl}`,
       error,
     );
+    console.error(`Using fallback text for: ${realUrl}, fallback length: ${fallbackText?.length || 0}`);
   }
 
   // If the try block failed for any reason, try to use the fallback text
@@ -192,6 +194,13 @@ export const fetchTopStories = async (): Promise<Article[]> => {
           fetchedDetails?.text && fetchedDetails.text.length > 100
             ? fetchedDetails.text
             : article.full_text || "Full article text could not be extracted.";
+        
+        // Log when we fall back to GitHub content
+        if (!fetchedDetails?.text || fetchedDetails.text.length <= 100) {
+          console.log(`Using GitHub content for: ${realUrl}, length: ${article.full_text?.length || 0}`);
+        } else {
+          console.log(`Using scraped content for: ${realUrl}, length: ${fetchedDetails.text.length}`);
+        }
         const imageUrl =
           fetchedDetails?.imageUrl ||
           article.image_url ||
