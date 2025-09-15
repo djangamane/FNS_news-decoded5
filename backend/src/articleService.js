@@ -1,7 +1,18 @@
 const { scrapeArticle } = require("./puppeteerService");
 
+// In-memory cache with a Time-To-Live (TTL) to keep articles fresh.
+const articleCache = new Map();
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
+
 // Fetch article with retry logic
 async function fetchArticle(url, retries = 3) {
+  // 1. Check for a fresh, valid item in the cache first.
+  const cachedItem = articleCache.get(url);
+  if (cachedItem && Date.now() - cachedItem.timestamp < CACHE_TTL) {
+    console.log(`Returning cached version for: ${url}`);
+    return cachedItem.data;
+  }
+
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       const articleData = await scrapeArticle(url);
@@ -11,13 +22,18 @@ async function fetchArticle(url, retries = 3) {
         throw new Error("Scraped article has no text content.");
       }
 
-      return {
+      const result = {
         url,
         title: articleData.title,
         content: articleData.textContent,
         imageUrl: articleData.imageUrl,
         fetchedAt: new Date().toISOString(),
       };
+
+      // 2. Store the successful result in the cache with a timestamp.
+      articleCache.set(url, { data: result, timestamp: Date.now() });
+
+      return result;
     } catch (error) {
       console.error(
         `Attempt ${attempt + 1} failed for ${url}: ${error.message}`,
