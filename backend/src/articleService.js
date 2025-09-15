@@ -56,25 +56,27 @@ async function fetchArticle(url, retries = 3) {
 
 // Batch fetch articles
 async function fetchArticles(urls) {
-  console.log(`Starting batch fetch for ${urls.length} URLs`);
-  
-  // Run all fetch operations in parallel for much faster batch processing
-  const promises = urls.map((url) => fetchArticle(url));
-  const outcomes = await Promise.allSettled(promises);
+  console.log(
+    `Starting sequential batch fetch for ${urls.length} URLs to respect API rate limits.`,
+  );
 
   const results = [];
   const errors = [];
 
-  outcomes.forEach((outcome, index) => {
-    if (outcome.status === "fulfilled") {
-      results.push(outcome.value);
-      console.log(`Successfully fetched article from: ${urls[index]}, content length: ${outcome.value.content.length} characters`);
-    } else {
+  for (const url of urls) {
+    try {
+      // Process one URL at a time.
+      const result = await fetchArticle(url);
+      results.push(result);
+      console.log(
+        `Successfully fetched article from: ${url}, content length: ${result.content.length} characters`,
+      );
+    } catch (error) {
       // If a specific fetch failed, record it.
-      errors.push({ url: urls[index], error: outcome.reason.message });
-      console.error(`Failed to fetch article from: ${urls[index]}, error: ${outcome.reason.message}`);
+      errors.push({ url, error: error.message });
+      console.error(`Failed to fetch article from: ${url}, error: ${error.message}`);
     }
-  });
+  }
 
   console.log(`Batch fetch completed. Successful: ${results.length}, Failed: ${errors.length}`);
   return { results, errors };
