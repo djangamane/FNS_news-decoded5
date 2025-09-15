@@ -6,13 +6,19 @@ async function fetchArticle(url, retries = 3) {
     try {
       const articleData = await scrapeArticle(url);
 
-      if (!articleData.content) {
+      if (!articleData.textContent) {
         throw new Error(
           "Could not extract meaningful content from the article.",
         );
       }
 
-      return articleData;
+      return {
+        url,
+        title: articleData.title,
+        content: articleData.textContent,
+        imageUrl: articleData.imageUrl,
+        fetchedAt: new Date().toISOString(),
+      };
     } catch (error) {
       console.error(
         `Attempt ${attempt + 1} failed for ${url}: ${error.message}`,
