@@ -1,4 +1,6 @@
 const puppeteer = require("puppeteer");
+const { Readability } = require("@mozilla/readability");
+const { JSDOM } = require("jsdom");
 
 async function scrapeArticle(url) {
   let browser = null;
@@ -8,28 +10,12 @@ async function scrapeArticle(url) {
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: "networkidle2" });
 
-    const article = await page.evaluate(() => {
-      const selectors = [
-        "article",
-        '[role="main"]',
-        "#main",
-        "#content",
-        ".post-content",
-        ".entry-content",
-        ".article-body",
-        ".story-body",
-      ];
+    const pageContent = await page.content();
+    const doc = new JSDOM(pageContent, { url });
+    const reader = new Readability(doc.window.document);
+    const article = reader.parse();
 
-      let mainContent = null;
-      for (const selector of selectors) {
-        const element = document.querySelector(selector);
-        if (element) {
-          mainContent = element.innerText;
-          break;
-        }
-      }
-
-      const title = document.querySelector("h1")?.innerText;
+    const imageUrl = await page.evaluate(() => {
       const ogImage = document
         .querySelector('meta[property="og:image"]')
         ?.getAttribute("content");
@@ -39,16 +25,11 @@ async function scrapeArticle(url) {
       const twitterImage = document
         .querySelector('meta[name="twitter:image"]')
         ?.getAttribute("content");
-
-      return {
-        title,
-        content: mainContent,
-        imageUrl: ogImage || image || twitterImage || null,
-      };
+      return ogImage || image || twitterImage || null;
     });
 
     console.log(`Finished scraping article from: ${url}`);
-    return article;
+    return { ...article, imageUrl };
   } catch (error) {
     console.error(`Error scraping article from: ${url}`, error);
     throw error;
