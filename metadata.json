@@ -1,0 +1,5 @@
+{
+  "name": "Fragile News Decoder",
+  "description": "An AI-powered news analysis tool that provides a counter-racism perspective on top news stories. It features a carousel of the top 10 articles, and upon selection, uses an AI agent to decode the article's text, providing insights into potential biases, key phrases, and alternative perspectives.",
+  "requestFramePermissions": []
+}
