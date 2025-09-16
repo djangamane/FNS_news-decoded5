@@ -46,8 +46,8 @@ async function fetchArticle(url, retries = 3) {
         );
       }
 
-      // Use a longer, fixed backoff to be more respectful of strict rate limits.
-      await new Promise((resolve) => setTimeout(resolve, 10000));
+      // Use an even longer, fixed backoff to be more respectful of strict rate limits.
+      await new Promise((resolve) => setTimeout(resolve, 15000));
     }
   }
 }
