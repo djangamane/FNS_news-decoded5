@@ -76,6 +76,13 @@ async function fetchArticles(urls) {
       errors.push({ url, error: error.message });
       console.error(`Failed to fetch article from: ${url}, error: ${error.message}`);
     }
+
+    // Add a cool-down period between each article to respect API rate limits,
+    // even if the previous one failed quickly. 5 seconds is a safe delay.
+    if (urls.indexOf(url) < urls.length - 1) {
+      console.log("Waiting 5 seconds before processing the next article...");
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
   }
 
   console.log(`Batch fetch completed. Successful: ${results.length}, Failed: ${errors.length}`);
