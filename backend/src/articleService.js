@@ -46,10 +46,8 @@ async function fetchArticle(url, retries = 3) {
         );
       }
 
-      // Exponential backoff
-      await new Promise((resolve) =>
-        setTimeout(resolve, Math.pow(2, attempt) * 1000),
-      );
+      // Use a longer, fixed backoff to be more respectful of strict rate limits.
+      await new Promise((resolve) => setTimeout(resolve, 10000));
     }
   }
 }
