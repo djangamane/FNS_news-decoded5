@@ -245,7 +245,7 @@ export const updateArticleAnalysis = async (
 ): Promise<void> => {
   const { error } = await supabase.from("articles").upsert(
     {
-      url: article.url, // Use URL as the unique key for upsert
+      source_url: article.url, // Use source_url as the unique key for upsert
       title: article.title,
       full_text: article.fullText,
       source: article.source,
@@ -260,7 +260,7 @@ export const updateArticleAnalysis = async (
       keisha_translation: analysis.keishaTranslation,
       analysis_updated_at: new Date().toISOString(),
     },
-    { onConflict: "url" },
+    { onConflict: "source_url" },
   );
 
   if (error) {
