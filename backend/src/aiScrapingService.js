@@ -1,5 +1,9 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const puppeteer = require("puppeteer");
+<<<<<<< HEAD
+=======
+const puppeteer = require("puppeteer");
+>>>>>>> 7b788595e0e5b18483c4a6b8e4f7eb43a5207e36
 
 // 1. Initialize the Gemini client with the API key from environment variables
 if (!process.env.GEMINI_API_KEY) {
