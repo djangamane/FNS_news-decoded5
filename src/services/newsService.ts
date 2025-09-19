@@ -126,7 +126,9 @@ const fetchArticleText = async (
       `Error fetching article from backend for url: ${realUrl}`,
       error,
     );
-    console.error(`Using fallback text for: ${realUrl}, fallback length: ${fallbackText?.length || 0}`);
+    console.error(
+      `Using fallback text for: ${realUrl}, fallback length: ${fallbackText?.length || 0}`,
+    );
   }
 
   // If the try block failed for any reason, try to use the fallback text
@@ -194,12 +196,16 @@ export const fetchTopStories = async (): Promise<Article[]> => {
           fetchedDetails?.text && fetchedDetails.text.length > 100
             ? fetchedDetails.text
             : article.full_text || "Full article text could not be extracted.";
-        
+
         // Log when we fall back to GitHub content
         if (!fetchedDetails?.text || fetchedDetails.text.length <= 100) {
-          console.log(`Using GitHub content for: ${realUrl}, length: ${article.full_text?.length || 0}`);
+          console.log(
+            `Using GitHub content for: ${realUrl}, length: ${article.full_text?.length || 0}`,
+          );
         } else {
-          console.log(`Using scraped content for: ${realUrl}, length: ${fetchedDetails.text.length}`);
+          console.log(
+            `Using scraped content for: ${realUrl}, length: ${fetchedDetails.text.length}`,
+          );
         }
         const imageUrl =
           fetchedDetails?.imageUrl ||
@@ -253,12 +259,6 @@ export const updateArticleAnalysis = async (
         ? null
         : article.imageUrl,
       bias_severity: article.biasSeverity,
-      // New analysis fields
-      analysis_score: analysis.score,
-      analysis_summary: analysis.analysisSummary,
-      detected_terms: analysis.detectedTerms,
-      keisha_translation: analysis.keishaTranslation,
-      analysis_updated_at: new Date().toISOString(),
     },
     { onConflict: "source_url" },
   );
