@@ -41,7 +41,7 @@ const Admin: React.FC<AdminProps> = ({ articles, setArticles }) => {
 
     try {
       const webhookUrl = import.meta.env.VITE_MAKE_WEBHOOK_URL as string;
-      const apiKey = import.meta.env.VITE_MAKE_API_KEY as string;
+
       const payload = {
         title: selectedArticle.title,
         source: selectedArticle.source,
@@ -56,7 +56,6 @@ const Admin: React.FC<AdminProps> = ({ articles, setArticles }) => {
       const response = await fetch(webhookUrl, {
         method: "POST",
         headers: {
-          "x-make-apikey": apiKey,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
