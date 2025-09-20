@@ -1,2 +1,3 @@
-export * from './geminiService';
-export * as newsService from './newsService';
+export * from "./geminiService";
+export * from "./newsService";
+export * as newsService from "./newsService";

@@ -81,3 +81,46 @@ export const fetchTopStories = async (): Promise<Article[]> => {
     );
   }
 };
+
+export const updateArticleAnalysis = async (
+  article: Article,
+  analysis: ArticleAnalysis,
+): Promise<Article> => {
+  try {
+    const { data, error } = await supabase
+      .from("articles")
+      .update({
+        analysis: analysis,
+        bias_severity: analysis.score,
+      })
+      .eq("id", article.id)
+      .select();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      throw new Error("No article returned after update.");
+    }
+
+    const updatedArticle: Article = {
+      id: data[0].id,
+      title: data[0].title || "Untitled Article",
+      url: data[0].source_url,
+      imageUrl:
+        data[0].image_url ||
+        `https://picsum.photos/seed/${encodeURIComponent(data[0].title || "fallback")}/600/400`,
+      fullText:
+        data[0].text_content || "Full article text could not be extracted.",
+      biasSeverity: data[0].bias_severity,
+      source: getSourceFromUrl(data[0].source_url),
+      analysis: data[0].analysis,
+    };
+
+    return updatedArticle;
+  } catch (error) {
+    console.error("Error updating article analysis in Supabase:", error);
+    throw new Error("Could not update the article analysis.");
+  }
+};
