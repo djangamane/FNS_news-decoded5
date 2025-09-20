@@ -253,12 +253,16 @@ export const updateArticleAnalysis = async (
     {
       source_url: article.url, // Use source_url as the unique key for upsert
       title: article.title,
-      full_text: article.fullText,
-      source: article.source,
+      text_content: article.fullText,
       image_url: article.imageUrl.startsWith("https://picsum.photos")
         ? null
         : article.imageUrl,
-      bias_severity: article.biasSeverity,
+      severity_score: analysis.score,
+      summary: analysis.analysisSummary,
+      analysis: JSON.stringify({
+        detectedTerms: analysis.detectedTerms,
+        keishaTranslation: analysis.keishaTranslation,
+      }),
     },
     { onConflict: "source_url" },
   );
