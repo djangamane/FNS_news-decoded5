@@ -46,7 +46,7 @@ export const fetchTopStories = async (): Promise<Article[]> => {
     const { data, error } = await supabase
       .from("articles")
       .select("*")
-      .order("bias_severity", { ascending: false })
+      .order("id", { ascending: false })
       .limit(10);
 
     if (error) {
