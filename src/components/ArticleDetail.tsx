@@ -26,27 +26,17 @@ const BackIcon = () => (
 );
 
 const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, onBack }) => {
-  // Initialize state with analysis if it was already fetched
-  const [analysis, setAnalysis] = useState<ArticleAnalysis | null>(
-    article.analysis || null,
-  );
-  const [isDecoding, setIsDecoding] = useState<boolean>(!article.analysis);
+  const [analysis, setAnalysis] = useState<ArticleAnalysis | null>(null);
+  const [isDecoding, setIsDecoding] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // If analysis already exists, no need to fetch it.
-    if (article.analysis) {
-      return;
-    }
-
     const getAnalysis = async () => {
       setIsDecoding(true);
       setError(null);
       try {
         const result = await decodeArticle(article.fullText);
         setAnalysis(result);
-        // Save the new analysis to Supabase for next time
-        // await newsService.updateArticleAnalysis(article, result);
       } catch (err) {
         setError(
           "The AI agent failed to decode the article. Please try again.",
@@ -58,7 +48,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, onBack }) => {
     };
 
     getAnalysis();
-  }, [article.id, article.fullText, article.analysis]);
+  }, [article.id, article.fullText]);
 
   const DecoderLoadingState = () => (
     <div className="space-y-6">
