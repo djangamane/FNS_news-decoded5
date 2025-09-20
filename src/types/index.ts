@@ -6,12 +6,12 @@ export interface Article {
   fullText: string;
   biasSeverity: number;
   source: string;
-  analysis?: ArticleAnalysis;
+  analysis?: string;
 }
 
 export interface ArticleAnalysis {
   score: number;
   analysisSummary: string;
-  detectedTerms: { term: string; explanation: string; }[];
+  detectedTerms: { term: string; explanation: string }[];
   keishaTranslation: string;
 }

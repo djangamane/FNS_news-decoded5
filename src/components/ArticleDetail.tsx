@@ -46,7 +46,7 @@ const ArticleDetail: React.FC<ArticleDetailProps> = ({ article, onBack }) => {
         const result = await decodeArticle(article.fullText);
         setAnalysis(result);
         // Save the new analysis to Supabase for next time
-        await newsService.updateArticleAnalysis(article, result);
+        // await newsService.updateArticleAnalysis(article, result);
       } catch (err) {
         setError(
           "The AI agent failed to decode the article. Please try again.",
