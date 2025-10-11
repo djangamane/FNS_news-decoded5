@@ -24,3 +24,14 @@ export interface BlogEntry {
   relatedArticles?: string;
   publishedAt?: string | null;
 }
+
+export interface BlogPost {
+  id: string;
+  sourceId: string;
+  title: string;
+  content: string;
+  relatedArticles?: string;
+  publishedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+}

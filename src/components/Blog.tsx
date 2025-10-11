@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import Header from "./Header";
 import Footer from "./Footer";
 import LoadingSpinner from "./LoadingSpinner";
-import { BlogEntry } from "../types";
-import { fetchBlogEntries } from "../services/blogService";
+import { BlogPost } from "../types";
+import { fetchPublishedBlogPosts } from "../services/blogService";
 
 const formatPublishedDate = (isoDate?: string | null): string => {
   if (!isoDate) {
@@ -23,12 +23,12 @@ const formatPublishedDate = (isoDate?: string | null): string => {
   }).format(parsed);
 };
 
-const extractSummary = (newsletter: string): string => {
-  if (!newsletter) {
+const extractSummary = (content: string): string => {
+  if (!content) {
     return "No summary available.";
   }
 
-  const firstLine = newsletter
+  const firstLine = content
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)[0];
@@ -37,15 +37,15 @@ const extractSummary = (newsletter: string): string => {
 };
 
 const Blog: React.FC = () => {
-  const [entries, setEntries] = useState<BlogEntry[]>([]);
-  const [selectedEntry, setSelectedEntry] = useState<BlogEntry | null>(null);
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const requestEntries = async (
+  const requestPosts = async (
     refresh = false,
-    preferredEntryId: string | null = null,
+    preferredPostId: string | null = null,
   ) => {
     setError(null);
 
@@ -56,28 +56,26 @@ const Blog: React.FC = () => {
     }
 
     try {
-      const blogEntries = await fetchBlogEntries({
-        refresh,
-      });
+      const blogPosts = await fetchPublishedBlogPosts();
 
-      setEntries(blogEntries);
+      setPosts(blogPosts);
 
-      if (!blogEntries.length) {
-        setSelectedEntry(null);
+      if (!blogPosts.length) {
+        setSelectedPost(null);
         return;
       }
 
-      const nextSelection = preferredEntryId
-        ? blogEntries.find((entry) => entry.id === preferredEntryId) ??
-          blogEntries[0]
-        : blogEntries[0];
+      const nextSelection = preferredPostId
+        ? blogPosts.find((post) => post.id === preferredPostId) ??
+          blogPosts[0]
+        : blogPosts[0];
 
-      setSelectedEntry(nextSelection);
+      setSelectedPost(nextSelection);
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to load blog entries from the newsletter feed.",
+          : "Failed to load published blog posts.",
       );
     } finally {
       if (refresh) {
@@ -89,16 +87,16 @@ const Blog: React.FC = () => {
   };
 
   useEffect(() => {
-    requestEntries().catch((err) => {
-      console.error("Unable to load blog entries:", err);
+    requestPosts().catch((err) => {
+      console.error("Unable to load published blog posts:", err);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRefresh = () => {
-    requestEntries(true, selectedEntry ? selectedEntry.id : null).catch(
+    requestPosts(true, selectedPost ? selectedPost.id : null).catch(
       (err) => {
-        console.error("Unable to refresh blog entries:", err);
+        console.error("Unable to refresh blog posts:", err);
       },
     );
   };
@@ -120,10 +118,10 @@ const Blog: React.FC = () => {
       );
     }
 
-    if (!entries.length) {
+    if (!posts.length) {
       return (
         <div className="p-6 bg-black/70 border border-green-500/30 rounded-lg text-center text-green-200">
-          No newsletter posts are available yet. Check back soon.
+          No blog posts have been published yet. Check back soon.
         </div>
       );
     }
@@ -142,12 +140,12 @@ const Blog: React.FC = () => {
             </button>
           </div>
           <ul className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
-            {entries.map((entry) => {
-              const isActive = selectedEntry?.id === entry.id;
+            {posts.map((post) => {
+              const isActive = selectedPost?.id === post.id;
               return (
-                <li key={entry.id}>
+                <li key={post.id}>
                   <button
-                    onClick={() => setSelectedEntry(entry)}
+                    onClick={() => setSelectedPost(post)}
                     className={`w-full text-left px-3 py-2 rounded border transition-colors ${
                       isActive
                         ? "border-green-400 bg-green-900/60 text-green-100"
@@ -155,10 +153,10 @@ const Blog: React.FC = () => {
                     }`}
                   >
                     <p className="text-sm uppercase tracking-wide text-green-300/80">
-                      {formatPublishedDate(entry.publishedAt)}
+                      {formatPublishedDate(post.publishedAt)}
                     </p>
                     <p className="text-base font-semibold truncate">
-                      {extractSummary(entry.newsletter)}
+                      {extractSummary(post.content)}
                     </p>
                   </button>
                 </li>
@@ -167,27 +165,27 @@ const Blog: React.FC = () => {
           </ul>
         </aside>
         <section className="bg-black/70 border border-green-500/30 rounded-lg p-6 hologram-card">
-          {selectedEntry ? (
+          {selectedPost ? (
             <>
               <h1 className="text-3xl font-bold text-green-300 glow-green mb-2">
-                {selectedEntry.title}
+                {selectedPost.title}
               </h1>
               <p className="text-sm text-green-200/80 mb-6 uppercase tracking-wide">
-                {formatPublishedDate(selectedEntry.publishedAt)}
+                {formatPublishedDate(selectedPost.publishedAt)}
               </p>
               <div className="space-y-6">
                 <div className="bg-black/60 border border-green-500/20 rounded-lg p-4">
                   <pre className="whitespace-pre-wrap text-green-100 font-mono text-sm leading-relaxed">
-                    {selectedEntry.newsletter}
+                    {selectedPost.content}
                   </pre>
                 </div>
-                {selectedEntry.relatedArticles ? (
+                {selectedPost.relatedArticles ? (
                   <div className="bg-black/60 border border-green-500/20 rounded-lg p-4">
                     <h2 className="text-xl font-semibold text-green-300 mb-2">
                       Referenced Articles
                     </h2>
                     <ul className="list-disc list-inside space-y-2 text-green-100 text-sm">
-                      {selectedEntry.relatedArticles
+                      {selectedPost.relatedArticles
                         .split(/\r?\n/)
                         .map((line) => line.trim())
                         .filter(Boolean)
@@ -200,7 +198,9 @@ const Blog: React.FC = () => {
               </div>
             </>
           ) : (
-            <p className="text-green-200">Select an entry to view the details.</p>
+            <p className="text-green-200">
+              Select a post to view the published content.
+            </p>
           )}
         </section>
       </div>

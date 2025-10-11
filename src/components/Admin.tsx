@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Article, ArticleAnalysis, BlogEntry } from "../types";
+import { Article, ArticleAnalysis, BlogEntry, BlogPost } from "../types";
 import {
   decodeArticle,
   updateArticleAnalysis,
   fetchBlogEntries,
+  fetchPublishedBlogPosts,
+  upsertBlogPost,
 } from "../services";
 import DecodeConfirmationDialog from "./DecodeConfirmationDialog";
 import LoadingSpinner from "./LoadingSpinner";
@@ -57,7 +59,46 @@ const Admin: React.FC<AdminProps> = ({ articles, setArticles }) => {
     useState<BlogEntry | null>(null);
   const [isLoadingBlog, setIsLoadingBlog] = useState<boolean>(false);
   const [blogError, setBlogError] = useState<string | null>(null);
+  const [publishedPosts, setPublishedPosts] = useState<BlogPost[]>([]);
+  const [isLoadingPublished, setIsLoadingPublished] =
+    useState<boolean>(false);
+  const [selectedPublishedPost, setSelectedPublishedPost] =
+    useState<BlogPost | null>(null);
+  const [editedTitle, setEditedTitle] = useState<string>("");
+  const [editedContent, setEditedContent] = useState<string>("");
+  const [editedRelatedArticles, setEditedRelatedArticles] =
+    useState<string>("");
+  const [isPublishingBlog, setIsPublishingBlog] = useState<boolean>(false);
+  const [publishMessage, setPublishMessage] = useState<string | null>(null);
+  const [publishError, setPublishError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  const resetPublishAlerts = () => {
+    setPublishMessage(null);
+    setPublishError(null);
+  };
+
+  const applyEntryToEditor = (
+    entry: BlogEntry,
+    publishedOverride?: BlogPost | null,
+  ) => {
+    const override = publishedOverride ?? null;
+    setSelectedPublishedPost(override);
+    setEditedTitle(override?.title || entry.title || "Newsletter Update");
+    setEditedContent(override?.content || entry.newsletter || "");
+    setEditedRelatedArticles(
+      override?.relatedArticles || entry.relatedArticles || "",
+    );
+  };
+
+  function handleSelectBlogEntry(entry: BlogEntry) {
+    setSelectedBlogEntry(entry);
+    const matchingPost = publishedPosts.find(
+      (post) => post.sourceId === entry.id,
+    );
+    applyEntryToEditor(entry, matchingPost);
+    resetPublishAlerts();
+  }
 
   const loadBlogEntries = async (
     refresh = false,
@@ -79,7 +120,7 @@ const Admin: React.FC<AdminProps> = ({ articles, setArticles }) => {
         ? entries.find((entry) => entry.id === preferredId) ?? entries[0]
         : entries[0];
 
-      setSelectedBlogEntry(nextSelection);
+      handleSelectBlogEntry(nextSelection);
     } catch (err) {
       setBlogError(
         err instanceof Error
@@ -91,9 +132,40 @@ const Admin: React.FC<AdminProps> = ({ articles, setArticles }) => {
     }
   };
 
+  const loadPublishedPosts = async (preferredSourceId?: string | null) => {
+    setPublishError(null);
+    setIsLoadingPublished(true);
+
+    try {
+      const posts = await fetchPublishedBlogPosts();
+      setPublishedPosts(posts);
+
+      const sourceId = preferredSourceId || selectedBlogEntry?.id || null;
+
+      if (sourceId) {
+        const matchingPost = posts.find((post) => post.sourceId === sourceId);
+        setSelectedPublishedPost(matchingPost ?? null);
+        if (matchingPost && selectedBlogEntry) {
+          applyEntryToEditor(selectedBlogEntry, matchingPost);
+        }
+      }
+    } catch (err) {
+      setPublishError(
+        err instanceof Error
+          ? err.message
+          : "Unable to load published blog posts.",
+      );
+    } finally {
+      setIsLoadingPublished(false);
+    }
+  };
+
   useEffect(() => {
     loadBlogEntries().catch((err) => {
       console.error("Failed to load newsletter feed:", err);
+    });
+    loadPublishedPosts().catch((err) => {
+      console.error("Failed to load published blog posts:", err);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -170,11 +242,99 @@ const Admin: React.FC<AdminProps> = ({ articles, setArticles }) => {
   };
 
   const handleRefreshBlog = () => {
+    resetPublishAlerts();
     loadBlogEntries(true, selectedBlogEntry ? selectedBlogEntry.id : null).catch(
       (err) => {
         console.error("Failed to refresh newsletter feed:", err);
       },
     );
+    loadPublishedPosts(selectedBlogEntry ? selectedBlogEntry.id : null).catch(
+      (err) => {
+        console.error("Failed to sync published posts during refresh:", err);
+      },
+    );
+  };
+
+  const handleRefreshPublished = () => {
+    resetPublishAlerts();
+    loadPublishedPosts(selectedBlogEntry ? selectedBlogEntry.id : null).catch(
+      (err) => {
+        console.error("Failed to refresh published posts:", err);
+      },
+    );
+  };
+
+  const handleUseDraftContent = () => {
+    if (!selectedBlogEntry) {
+      return;
+    }
+    applyEntryToEditor(selectedBlogEntry, null);
+    resetPublishAlerts();
+  };
+
+  const handleUsePublishedContent = () => {
+    if (!selectedBlogEntry || !selectedPublishedPost) {
+      return;
+    }
+    applyEntryToEditor(selectedBlogEntry, selectedPublishedPost);
+    resetPublishAlerts();
+  };
+
+  const handlePublishBlog = async () => {
+    if (!selectedBlogEntry) {
+      setPublishError("Select a newsletter entry before publishing.");
+      return;
+    }
+
+    if (!editedContent.trim()) {
+      setPublishError("Blog content cannot be empty.");
+      return;
+    }
+
+    const sourceId = selectedBlogEntry.id;
+    const publishedAtIso = selectedBlogEntry.publishedAt
+      ? new Date(selectedBlogEntry.publishedAt).toISOString()
+      : new Date().toISOString();
+
+    setIsPublishingBlog(true);
+    setPublishMessage(null);
+    setPublishError(null);
+
+    try {
+      const savedPost = await upsertBlogPost({
+        sourceId,
+        title:
+          editedTitle.trim() || selectedBlogEntry.title || "Newsletter Update",
+        content: editedContent.trim(),
+        relatedArticles: editedRelatedArticles.trim() || null,
+        publishedAt: publishedAtIso,
+      });
+
+      setPublishedPosts((prev) => {
+        const index = prev.findIndex((post) => post.sourceId === sourceId);
+        if (index >= 0) {
+          const clone = [...prev];
+          clone[index] = savedPost;
+          return clone;
+        }
+        return [savedPost, ...prev];
+      });
+
+      applyEntryToEditor(selectedBlogEntry, savedPost);
+      setPublishMessage(
+        selectedPublishedPost
+          ? "Blog post updated successfully."
+          : "Blog post published successfully.",
+      );
+    } catch (err) {
+      setPublishError(
+        err instanceof Error
+          ? err.message
+          : "Unable to publish blog post.",
+      );
+    } finally {
+      setIsPublishingBlog(false);
+    }
   };
 
   return (
@@ -263,54 +423,167 @@ const Admin: React.FC<AdminProps> = ({ articles, setArticles }) => {
               <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-2">
                 {blogEntries.map((entry) => {
                   const isActive = selectedBlogEntry?.id === entry.id;
+                  const isPublished = publishedPosts.some(
+                    (post) => post.sourceId === entry.id,
+                  );
                   return (
                     <button
                       key={entry.id}
-                      onClick={() => setSelectedBlogEntry(entry)}
+                      onClick={() => handleSelectBlogEntry(entry)}
                       className={`w-full text-left px-3 py-2 border rounded transition-colors ${
                         isActive
                           ? "border-green-300 bg-green-900/60 text-green-100"
                           : "border-green-500/30 bg-black/60 text-green-300 hover:bg-green-800/40"
                       }`}
                     >
-                      <p className="text-xs uppercase tracking-wide text-green-300/80">
-                        {formatBlogDate(entry.publishedAt)}
-                      </p>
-                      <p className="text-sm font-semibold">
-                        {summariseNewsletter(entry.newsletter)}
-                      </p>
+                      <div className="flex justify-between items-start gap-3">
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-green-300/80">
+                            {formatBlogDate(entry.publishedAt)}
+                          </p>
+                          <p className="text-sm font-semibold">
+                            {summariseNewsletter(entry.newsletter)}
+                          </p>
+                        </div>
+                        {isPublished ? (
+                          <span className="text-[10px] uppercase tracking-wide font-semibold text-green-200 bg-green-800/80 border border-green-500/60 rounded px-2 py-1">
+                            Published
+                          </span>
+                        ) : null}
+                      </div>
                     </button>
                   );
                 })}
               </div>
-              <div className="bg-black/70 border border-green-500/20 rounded-lg p-4">
+              <div className="bg-black/70 border border-green-500/20 rounded-lg p-4 space-y-4">
                 {selectedBlogEntry ? (
                   <>
-                    <h3 className="text-xl font-semibold text-green-200 mb-2">
-                      {selectedBlogEntry.title}
-                    </h3>
-                    <p className="text-xs uppercase text-green-300/70 mb-4">
-                      {formatBlogDate(selectedBlogEntry.publishedAt)}
-                    </p>
-                    <pre className="whitespace-pre-wrap text-green-100 text-sm leading-relaxed">
-                      {selectedBlogEntry.newsletter}
-                    </pre>
-                    {selectedBlogEntry.relatedArticles ? (
-                      <div className="mt-4">
-                        <h4 className="text-lg font-semibold text-green-200 mb-2">
-                          Referenced Articles
-                        </h4>
-                        <ul className="list-disc list-inside text-green-100 text-sm space-y-1">
-                          {selectedBlogEntry.relatedArticles
-                            .split(/\r?\n/)
-                            .map((line) => line.trim())
-                            .filter(Boolean)
-                            .map((line) => (
-                              <li key={line}>{line}</li>
-                            ))}
-                        </ul>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex justify-between items-start gap-3">
+                        <div>
+                          <h3 className="text-xl font-semibold text-green-200">
+                            Editing: {formatBlogDate(selectedBlogEntry.publishedAt)}
+                          </h3>
+                          <p className="text-xs uppercase text-green-300/70">
+                            Source ID: {selectedBlogEntry.id}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleRefreshPublished}
+                            className="px-3 py-1 text-xs uppercase tracking-wide bg-green-700 hover:bg-green-600 text-black font-semibold rounded transition-colors disabled:bg-gray-700 disabled:text-gray-300"
+                            disabled={isLoadingPublished}
+                          >
+                            {isLoadingPublished ? "Syncing..." : "Sync Published"}
+                          </button>
+                        </div>
+                      </div>
+                      {publishError && (
+                        <div className="p-2 bg-red-900/50 border border-red-500 rounded text-red-200 text-sm">
+                          {publishError}
+                        </div>
+                      )}
+                      {publishMessage && (
+                        <div className="p-2 bg-green-900/50 border border-green-500 rounded text-green-200 text-sm">
+                          {publishMessage}
+                        </div>
+                      )}
+                    </div>
+                    <label className="block">
+                      <span className="text-sm font-semibold text-green-200 uppercase tracking-wide">
+                        Title
+                      </span>
+                      <input
+                        value={editedTitle}
+                        onChange={(event) => {
+                          setEditedTitle(event.target.value);
+                          resetPublishAlerts();
+                        }}
+                        className="mt-1 w-full bg-black/60 border border-green-500/40 rounded px-3 py-2 text-green-100 focus:outline-none focus:ring-2 focus:ring-green-400"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-semibold text-green-200 uppercase tracking-wide">
+                        Blog Content
+                      </span>
+                      <textarea
+                        value={editedContent}
+                        onChange={(event) => {
+                          setEditedContent(event.target.value);
+                          resetPublishAlerts();
+                        }}
+                        className="mt-1 w-full bg-black/60 border border-green-500/40 rounded px-3 py-2 text-green-100 focus:outline-none focus:ring-2 focus:ring-green-400 h-64"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-semibold text-green-200 uppercase tracking-wide">
+                        Referenced Articles (optional)
+                      </span>
+                      <textarea
+                        value={editedRelatedArticles}
+                        onChange={(event) => {
+                          setEditedRelatedArticles(event.target.value);
+                          resetPublishAlerts();
+                        }}
+                        className="mt-1 w-full bg-black/60 border border-green-500/40 rounded px-3 py-2 text-green-100 focus:outline-none focus:ring-2 focus:ring-green-400 h-32"
+                        placeholder="One link or bullet per line"
+                      />
+                    </label>
+                    <div className="flex flex-wrap gap-3 pt-2">
+                      <button
+                        onClick={handleUseDraftContent}
+                        className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-green-100 rounded transition-colors"
+                      >
+                        Use Draft Content
+                      </button>
+                      <button
+                        onClick={handleUsePublishedContent}
+                        disabled={!selectedPublishedPost}
+                        className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-black font-semibold rounded transition-colors disabled:bg-gray-700 disabled:text-gray-300"
+                      >
+                        Load Published Version
+                      </button>
+                      <button
+                        onClick={handlePublishBlog}
+                        disabled={isPublishingBlog}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-500 text-black font-bold rounded transition-colors disabled:bg-gray-600 disabled:text-gray-300"
+                      >
+                        {isPublishingBlog
+                          ? "Saving..."
+                          : selectedPublishedPost
+                            ? "Update Blog Post"
+                            : "Publish to Blog"}
+                      </button>
+                    </div>
+                    {editedRelatedArticles ? (
+                      <div className="pt-2 text-xs text-green-300/80">
+                        Lines will appear as bullet points on the blog page.
                       </div>
                     ) : null}
+                    <details className="bg-black/60 border border-green-500/30 rounded-lg p-3">
+                      <summary className="cursor-pointer text-green-200 font-semibold">
+                        View Raw Newsletter Source
+                      </summary>
+                      <pre className="mt-3 whitespace-pre-wrap text-green-100 text-xs leading-relaxed max-h-64 overflow-y-auto">
+                        {selectedBlogEntry.newsletter}
+                      </pre>
+                      {selectedBlogEntry.relatedArticles ? (
+                        <div className="mt-3">
+                          <h4 className="text-sm font-semibold text-green-200 mb-2 uppercase tracking-wide">
+                            Draft References
+                          </h4>
+                          <ul className="list-disc list-inside text-green-100 text-xs space-y-1">
+                            {selectedBlogEntry.relatedArticles
+                              .split(/\r?\n/)
+                              .map((line) => line.trim())
+                              .filter(Boolean)
+                              .map((line) => (
+                                <li key={line}>{line}</li>
+                              ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </details>
                   </>
                 ) : (
                   <p className="text-green-200">

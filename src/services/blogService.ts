@@ -1,4 +1,5 @@
-import { BlogEntry } from "../types";
+import { BlogEntry, BlogPost } from "../types";
+import { supabase } from "./supabaseClient";
 
 const DEFAULT_NEWSLETTER_URL =
   "https://docs.google.com/spreadsheets/d/1CDALlD2V_Rm_cSaabZCEVIa2LMpV48IsOXrdFQ8lR5E/export?format=csv";
@@ -24,6 +25,11 @@ const cacheState: BlogCacheState = {
   entries: null,
   expiresAt: 0,
 };
+
+const generateFallbackId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `blog-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 const normaliseSpreadsheetUrl = (rawUrl: string): string => {
   if (!rawUrl) {
@@ -260,4 +266,87 @@ export const fetchBlogEntries = async (
   cacheState.expiresAt = now + BLOG_CACHE_TTL_MS;
 
   return typeof limit === "number" ? entries.slice(0, limit) : entries;
+};
+
+const BLOG_POSTS_TABLE = "blog_posts";
+
+const mapBlogPost = (record: any): BlogPost => ({
+  id:
+    typeof record.id === "string"
+      ? record.id
+      : record.source_id || record.published_at || generateFallbackId(),
+  sourceId: record.source_id || record.id,
+  title: record.title || "Newsletter Update",
+  content: record.content || "",
+  relatedArticles: record.related_articles ?? undefined,
+  publishedAt: record.published_at || record.created_at || new Date().toISOString(),
+  createdAt: record.created_at ?? undefined,
+  updatedAt: record.updated_at ?? undefined,
+});
+
+export const fetchPublishedBlogPosts = async (): Promise<BlogPost[]> => {
+  const { data, error } = await supabase
+    .from(BLOG_POSTS_TABLE)
+    .select("*")
+    .order("published_at", { ascending: false });
+
+  if (error) {
+    console.error("Failed to load published blog posts from Supabase:", error);
+    if ((error as { code?: string }).code === "42P01") {
+      throw new Error(
+        "Blog posts table not found. Please create the 'blog_posts' table in Supabase.",
+      );
+    }
+    throw new Error("Unable to load published blog posts.");
+  }
+
+  if (!data) {
+    return [];
+  }
+
+  return data.map(mapBlogPost);
+};
+
+interface UpsertBlogPayload {
+  sourceId: string;
+  title: string;
+  content: string;
+  relatedArticles?: string | null;
+  publishedAt: string;
+}
+
+export const upsertBlogPost = async (
+  payload: UpsertBlogPayload,
+): Promise<BlogPost> => {
+  const { data, error } = await supabase
+    .from(BLOG_POSTS_TABLE)
+    .upsert(
+      {
+        source_id: payload.sourceId,
+        title: payload.title,
+        content: payload.content,
+        related_articles: payload.relatedArticles ?? null,
+        published_at: payload.publishedAt,
+      },
+      { onConflict: "source_id" },
+    )
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Failed to upsert blog post:", error);
+    const errorCode = (error as { code?: string }).code;
+    if (errorCode === "42P01") {
+      throw new Error(
+        "Blog posts table not found. Please create the 'blog_posts' table in Supabase.",
+      );
+    }
+    throw new Error(error.message || "Unable to publish blog post.");
+  }
+
+  if (!data) {
+    throw new Error("No data returned after blog post upsert.");
+  }
+
+  return mapBlogPost(data);
 };
