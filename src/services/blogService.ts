@@ -124,6 +124,61 @@ const deriveTitle = (newsletter: string, publishedAt?: string | null): string =>
   return "Newsletter Update";
 };
 
+const MONTH_NAMES =
+  "(January|February|March|April|May|June|July|August|September|October|November|December)";
+
+const monthNameDatePattern = new RegExp(
+  `${MONTH_NAMES}\\s+\\d{1,2},\\s+\\d{4}`,
+  "i",
+);
+const numericDatePattern = /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/;
+const isoDatePattern = /\b\d{4}-\d{2}-\d{2}\b/;
+
+const normalizeDateString = (input: string): string | null => {
+  const parsed = Date.parse(input);
+  if (Number.isNaN(parsed)) {
+    return null;
+  }
+  return new Date(parsed).toISOString();
+};
+
+const extractDateFromNewsletter = (newsletter: string): string | null => {
+  const lines = newsletter.split(/\r?\n/);
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const monthMatch = line.match(monthNameDatePattern);
+    if (monthMatch) {
+      const iso = normalizeDateString(monthMatch[0]);
+      if (iso) {
+        return iso;
+      }
+    }
+
+    const isoMatch = line.match(isoDatePattern);
+    if (isoMatch) {
+      const iso = normalizeDateString(isoMatch[0]);
+      if (iso) {
+        return iso;
+      }
+    }
+
+    const numericMatch = line.match(numericDatePattern);
+    if (numericMatch) {
+      const candidate = numericMatch[0];
+      const normalized = candidate.length === 8 && candidate.indexOf("/") === 1
+        ? candidate
+        : candidate;
+      const iso = normalizeDateString(normalized);
+      if (iso) {
+        return iso;
+      }
+    }
+  }
+  return null;
+};
+
 const convertRowsToEntries = (rows: string[][]): BlogEntry[] => {
   if (!rows.length) {
     return [];
@@ -138,8 +193,8 @@ const convertRowsToEntries = (rows: string[][]): BlogEntry[] => {
 
   for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
     const row = rows[rowIndex];
-    const publishedAt =
-      dateIndex >= 0 && row[dateIndex] ? row[dateIndex].trim() : undefined;
+    const initialPublishedAt =
+      dateIndex >= 0 && row[dateIndex] ? row[dateIndex].trim() : "";
     const newsletter =
       newsletterIndex >= 0 && row[newsletterIndex]
         ? row[newsletterIndex].trim()
@@ -151,12 +206,16 @@ const convertRowsToEntries = (rows: string[][]): BlogEntry[] => {
       continue;
     }
 
+    const derivedPublishedAt =
+      normalizeDateString(initialPublishedAt) ||
+      extractDateFromNewsletter(newsletter);
+
     entries.push({
-      id: publishedAt || `entry-${rowIndex}`,
-      title: deriveTitle(newsletter, publishedAt),
+      id: derivedPublishedAt || `entry-${rowIndex}`,
+      title: deriveTitle(newsletter, derivedPublishedAt),
       newsletter,
       relatedArticles: relatedArticles || undefined,
-      publishedAt: publishedAt ?? null,
+      publishedAt: derivedPublishedAt,
     });
   }
 
