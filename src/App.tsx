@@ -9,6 +9,7 @@ import Footer from "./components/Footer";
 import LoadingSpinner from "./components/LoadingSpinner";
 import Admin from "./components/Admin";
 import Blog from "./components/Blog";
+import NotFound from "./components/NotFound";
 
 const MainApp: React.FC<{
   articles: Article[];
@@ -136,6 +137,7 @@ const App: React.FC = () => {
         path="/admin"
         element={<Admin articles={articles} setArticles={setArticles} />}
       />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };
