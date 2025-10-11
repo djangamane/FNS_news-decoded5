@@ -4,6 +4,7 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const articleRoutes = require("./routes/articles");
 const adminRoutes = require("./routes/admin");
+const blogRoutes = require("./routes/blog");
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use("/api/articles", articleRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/blog", blogRoutes);
 
 // Root endpoint
 app.get("/", (req, res) => {
