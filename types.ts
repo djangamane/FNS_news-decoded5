@@ -16,3 +16,22 @@ export interface Article {
   // Analysis is now an optional part of the Article object
   analysis?: ArticleAnalysis;
 }
+
+export interface BlogEntry {
+  id: string;
+  title: string;
+  newsletter: string;
+  relatedArticles?: string;
+  publishedAt?: string | null;
+}
+
+export interface BlogPost {
+  id: string;
+  sourceId: string;
+  title: string;
+  content: string;
+  relatedArticles?: string;
+  publishedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+}

@@ -8,6 +8,7 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import LoadingSpinner from "./components/LoadingSpinner";
 import Admin from "./components/Admin";
+import Blog from "./components/Blog";
 
 const MainApp: React.FC<{
   articles: Article[];
@@ -130,6 +131,7 @@ const App: React.FC = () => {
           />
         }
       />
+      <Route path="/blog" element={<Blog />} />
       <Route
         path="/admin"
         element={<Admin articles={articles} setArticles={setArticles} />}
