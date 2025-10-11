@@ -11,16 +11,53 @@ const app = express();
 // Security middleware
 app.use(helmet());
 
-const allowedOrigins = (process.env.CORS_ORIGIN || "")
-  .split(",")
-  .map((origin) => origin.trim());
+const DEFAULT_ALLOWED_ORIGINS = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://fns-news-decoded5.vercel.app",
+];
+
+const sanitizeOriginList = (origins) =>
+  origins
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+
+const envAllowedOrigins = sanitizeOriginList(
+  (process.env.CORS_ORIGIN || "").split(","),
+);
+
+const allowedOrigins = Array.from(
+  new Set([...DEFAULT_ALLOWED_ORIGINS, ...envAllowedOrigins]),
+);
+
+const escapeRegex = (value) => value.replace(/[-/\\^$+?.()|[\]{}]/g, "\\$&");
+
+const buildOriginMatcher = (pattern) => {
+  if (pattern === "*") {
+    return () => true;
+  }
+
+  if (pattern.includes("*")) {
+    const regex = new RegExp(
+      `^${escapeRegex(pattern).replace(/\\\*/g, ".*")}$`,
+    );
+    return (origin) => regex.test(origin);
+  }
+
+  return (origin) => origin === pattern;
+};
+
+const originMatchers = allowedOrigins.map(buildOriginMatcher);
+
+const isOriginAllowed = (origin) =>
+  originMatchers.some((matcher) => matcher(origin));
 
 app.use(
   cors({
     origin: (origin, callback) => {
       if (
         !origin ||
-        allowedOrigins.includes(origin) ||
+        isOriginAllowed(origin) ||
         allowedOrigins.includes("*")
       ) {
         callback(null, true);
