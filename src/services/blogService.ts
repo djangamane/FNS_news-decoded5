@@ -1,5 +1,6 @@
 import { BlogEntry, BlogPost } from "../types";
 import { supabase } from "./supabaseClient";
+import { extractSourceIdFromSlug, withBlogSlug } from "../utils/blog";
 
 const DEFAULT_NEWSLETTER_URL =
   "https://docs.google.com/spreadsheets/d/1CDALlD2V_Rm_cSaabZCEVIa2LMpV48IsOXrdFQ8lR5E/export?format=csv";
@@ -270,19 +271,24 @@ export const fetchBlogEntries = async (
 
 const BLOG_POSTS_TABLE = "blog_posts";
 
-const mapBlogPost = (record: any): BlogPost => ({
-  id:
-    typeof record.id === "string"
-      ? record.id
-      : record.source_id || record.published_at || generateFallbackId(),
-  sourceId: record.source_id || record.id,
-  title: record.title || "Newsletter Update",
-  content: record.content || "",
-  relatedArticles: record.related_articles ?? undefined,
-  publishedAt: record.published_at || record.created_at || new Date().toISOString(),
-  createdAt: record.created_at ?? undefined,
-  updatedAt: record.updated_at ?? undefined,
-});
+const mapBlogPost = (record: any): BlogPost => {
+  const basePost = {
+    id:
+      typeof record.id === "string"
+        ? record.id
+        : record.source_id || record.published_at || generateFallbackId(),
+    sourceId: record.source_id || record.id,
+    title: record.title || "Newsletter Update",
+    content: record.content || "",
+    relatedArticles: record.related_articles ?? undefined,
+    publishedAt:
+      record.published_at || record.created_at || new Date().toISOString(),
+    createdAt: record.created_at ?? undefined,
+    updatedAt: record.updated_at ?? undefined,
+  };
+
+  return withBlogSlug(basePost);
+};
 
 export const fetchPublishedBlogPosts = async (): Promise<BlogPost[]> => {
   const { data, error } = await supabase
@@ -349,4 +355,42 @@ export const upsertBlogPost = async (
   }
 
   return mapBlogPost(data);
+};
+
+export const fetchBlogPostBySourceId = async (
+  sourceId: string,
+): Promise<BlogPost | null> => {
+  if (!sourceId) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from(BLOG_POSTS_TABLE)
+    .select("*")
+    .eq("source_id", sourceId)
+    .maybeSingle();
+
+  if (error) {
+    if ((error as { code?: string }).code === "PGRST116") {
+      return null;
+    }
+    console.error("Failed to load blog post by source id:", error);
+    throw new Error("Unable to load the requested blog post.");
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return mapBlogPost(data);
+};
+
+export const fetchBlogPostBySlug = async (
+  slug: string,
+): Promise<BlogPost | null> => {
+  const sourceId = extractSourceIdFromSlug(slug);
+  if (!sourceId) {
+    return null;
+  }
+  return fetchBlogPostBySourceId(sourceId);
 };

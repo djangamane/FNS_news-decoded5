@@ -8,7 +8,9 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import LoadingSpinner from "./components/LoadingSpinner";
 import Admin from "./components/Admin";
-import Blog from "./components/Blog";
+import BlogLayout from "./components/blog/BlogLayout";
+import BlogIndex from "./components/blog/BlogIndex";
+import BlogPostPage from "./components/blog/BlogPostPage";
 import NotFound from "./components/NotFound";
 
 const MainApp: React.FC<{
@@ -132,7 +134,11 @@ const App: React.FC = () => {
           />
         }
       />
-      <Route path="/blog" element={<Blog />} />
+      <Route path="/blog" element={<BlogLayout />}>
+        <Route index element={<BlogIndex />} />
+        <Route path="page/:page" element={<BlogIndex />} />
+        <Route path=":slug" element={<BlogPostPage />} />
+      </Route>
       <Route
         path="/admin"
         element={<Admin articles={articles} setArticles={setArticles} />}
