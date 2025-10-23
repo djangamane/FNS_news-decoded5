@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { Outlet } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
 import Header from "../Header";
 import Footer from "../Footer";
 import LoadingSpinner from "../LoadingSpinner";
@@ -109,6 +109,15 @@ const BlogLayout: React.FC = () => {
 
         <Header />
         <main className="flex-grow container mx-auto px-4 py-8 relative z-10">
+          <div className="flex items-center mb-6">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 px-3 py-2 border border-green-500/40 text-green-200 rounded hover:bg-green-500/10 transition-colors"
+            >
+              <span aria-hidden="true">←</span>
+              <span>Back to home</span>
+            </Link>
+          </div>
           {showInitialSpinner ? (
             <div className="flex justify-center items-center h-64">
               <LoadingSpinner message="Loading Ethical AI briefings..." />
@@ -124,4 +133,3 @@ const BlogLayout: React.FC = () => {
 };
 
 export default BlogLayout;
-
