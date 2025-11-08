@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { FaHeart } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 const Footer: React.FC = () => {
@@ -27,7 +28,7 @@ const Footer: React.FC = () => {
 
   return (
     <>
-      <footer className="bg-black/90 text-green-500 mt-12 border-t border-green-500/30 hologram-card">
+      <footer className="relative bg-black/90 text-green-500 mt-12 border-t border-green-500/30 hologram-card">
         <div className="container mx-auto px-4 py-6 text-center circuit-bg">
           <p className="glow-green">
             &copy; {new Date().getFullYear()} Fragile News Source. An AI-powered
@@ -44,6 +45,17 @@ const Footer: React.FC = () => {
               Admin Login
             </button>
           </p>
+        </div>
+        <div className="absolute right-4 bottom-4">
+          <a
+            href="https://www.paypal.com/ncp/payment/AKR92V5RRGT9A"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 rounded border border-green-500/40 text-green-200 hover:bg-green-500/10 transition-colors text-sm font-semibold inline-flex items-center space-x-2 shadow-lg bg-black/70"
+          >
+            <FaHeart className="text-green-400" aria-hidden="true" />
+            <span>Tip or Donate</span>
+          </a>
         </div>
       </footer>
 
