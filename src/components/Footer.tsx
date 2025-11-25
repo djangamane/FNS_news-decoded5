@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FaHeart } from "react-icons/fa";
+import { FaHeart, FaBook } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
 const Footer: React.FC = () => {
@@ -55,6 +55,17 @@ const Footer: React.FC = () => {
           >
             <FaHeart className="text-green-400" aria-hidden="true" />
             <span>Tip or Donate</span>
+          </a>
+        </div>
+        <div className="absolute left-4 bottom-4">
+          <a
+            href="https://airccse.com/ijcsitce/papers/11324ijcsitce01.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 rounded border border-green-500/40 text-green-200 hover:bg-green-500/10 transition-colors text-sm font-semibold inline-flex items-center space-x-2 shadow-lg bg-black/70"
+          >
+            <FaBook className="text-green-400" aria-hidden="true" />
+            <span>Built on Published RESEARCH</span>
           </a>
         </div>
       </footer>
