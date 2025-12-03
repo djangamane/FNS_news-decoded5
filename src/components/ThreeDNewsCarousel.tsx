@@ -1,6 +1,7 @@
 import React from "react";
 import { Article } from "../types";
 import ThreeDPhotoCarousel, { CarouselItem } from "./ui/ThreeDPhotoCarousel";
+import { BgAnimateButton } from "./ui/BgAnimateButton";
 
 interface ThreeDNewsCarouselProps {
     articles: Article[];
@@ -44,16 +45,21 @@ const ThreeDNewsCarousel: React.FC<ThreeDNewsCarouselProps> = ({
                         {article.title}
                     </h3>
 
-                    {/* Decode Button */}
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectArticle(article);
-                        }}
-                        className="w-full bg-green-600 hover:bg-green-500 text-black font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-opacity-75 glow-green transform hover:scale-105"
-                    >
-                        Decode Story →
-                    </button>
+                    <div className="absolute bottom-6 left-0 right-0 flex justify-center z-20">
+                        <BgAnimateButton
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onSelectArticle(article);
+                            }}
+                            gradient="forest"
+                            animation="pulse"
+                            rounded="full"
+                            shadow="deep"
+                            className="hover:scale-105 transition-transform"
+                        >
+                            Decode Story →
+                        </BgAnimateButton>
+                    </div>
                 </div>
 
                 {/* Hover Effect Border */}
