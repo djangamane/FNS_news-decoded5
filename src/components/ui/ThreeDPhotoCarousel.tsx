@@ -107,7 +107,7 @@ const ThreeDPhotoCarousel: React.FC<ThreeDPhotoCarouselProps> = ({
                     Woke AI vs. MAGA
                 </h1>
                 <p className="text-red-400 max-w-2xl mx-auto text-lg font-mono">
-                    Engage our AI agent for a counter-perspective analysis.
+                    Engage our AI agent for a counter-racist analysis.
                 </p>
             </div>
             <div className="relative h-[500px] flex items-center justify-center">
