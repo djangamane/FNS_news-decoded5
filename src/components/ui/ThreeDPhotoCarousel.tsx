@@ -28,7 +28,7 @@ const ThreeDPhotoCarousel: React.FC<ThreeDPhotoCarouselProps> = ({
 
     const itemCount = items.length;
     const theta = 360 / itemCount;
-    const radius = Math.round((250 / 2) / Math.tan(Math.PI / itemCount));
+    const radius = Math.round((450 / 2) / Math.tan(Math.PI / itemCount));
 
     useEffect(() => {
         if (!autoRotate || isDragging) return;
@@ -146,8 +146,8 @@ const ThreeDPhotoCarousel: React.FC<ThreeDPhotoCarouselProps> = ({
                                 >
                                     <div
                                         className={`w-full h-full hologram-card rounded-xl overflow-hidden transition-all duration-300 ${isCurrent
-                                                ? "scale-100 opacity-100 shadow-2xl shadow-green-500/40"
-                                                : "scale-90 opacity-60"
+                                            ? "scale-100 opacity-100 shadow-2xl shadow-green-500/40"
+                                            : "scale-90 opacity-60"
                                             }`}
                                     >
                                         {item.content || (
@@ -189,8 +189,8 @@ const ThreeDPhotoCarousel: React.FC<ThreeDPhotoCarouselProps> = ({
                         key={item.id}
                         onClick={() => setCurrentIndex(index)}
                         className={`w-3 h-3 rounded-full transition-all ${index === currentIndex
-                                ? "bg-green-400 w-8 glow-green"
-                                : "bg-green-700/50 hover:bg-green-600"
+                            ? "bg-green-400 w-8 glow-green"
+                            : "bg-green-700/50 hover:bg-green-600"
                             }`}
                         aria-label={`Go to story ${index + 1}`}
                     />
