@@ -105,11 +105,11 @@ const ThreeDPhotoCarousel: React.FC<ThreeDPhotoCarouselProps> = ({
         <div className="relative w-full max-w-5xl mx-auto">
             <div className="w-full max-w-4xl mx-auto mb-12 relative z-10">
                 <LightBoard
-                    text="   Woke AI   vs.   MAGA                                                                                               "
+                    text="   Woke AI vs. MAGA           "
                     gap={2}
                     lightSize={12}
                     rows={7}
-                    updateInterval={800}
+                    updateInterval={1500}
                     preserveSpaces={true}
                     colors={{
                         background: "rgba(20, 0, 0, 0.3)",
