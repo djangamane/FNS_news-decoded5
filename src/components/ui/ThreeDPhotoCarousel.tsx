@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-
+import { motion, useAnimation, PanInfo } from "framer-motion";
+import { LightBoard } from "./LightBoard";
 export interface CarouselItem {
     id: string | number;
     imageUrl: string;
@@ -102,14 +103,21 @@ const ThreeDPhotoCarousel: React.FC<ThreeDPhotoCarouselProps> = ({
 
     return (
         <div className="relative w-full max-w-5xl mx-auto">
-            <h1 className="text-4xl font-extrabold text-center mb-2 text-green-300 glow-green">
-                Top 10 Stories by Bias Severity
-            </h1>
-            <p className="text-center text-lg text-green-500 mb-8 max-w-3xl mx-auto glow-cyan">
-                These stories are programmatically selected and ranked. Click a story
-                to engage our AI agent for a counter-perspective analysis.
-            </p>
-
+            <div className="w-full max-w-4xl mx-auto mb-12 relative z-10">
+                <LightBoard
+                    text="Woke AI vs. MAGA"
+                    gap={1}
+                    lightSize={6}
+                    rows={7}
+                    updateInterval={50}
+                    colors={{
+                        background: "rgba(0, 20, 0, 0.3)",
+                        textDim: "rgba(0, 100, 0, 0.5)",
+                        textBright: "rgba(0, 255, 0, 0.9)",
+                        drawLine: "rgba(0, 150, 0, 0.7)"
+                    }}
+                />
+            </div>
             <div className="relative h-[500px] flex items-center justify-center">
                 {/* Carousel Container */}
                 <div
