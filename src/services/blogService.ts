@@ -324,37 +324,69 @@ interface UpsertBlogPayload {
 export const upsertBlogPost = async (
   payload: UpsertBlogPayload,
 ): Promise<BlogPost> => {
-  const { data, error } = await supabase
+  // First, check if the post exists by sourceId
+  const { data: existingPost, error: fetchError } = await supabase
     .from(BLOG_POSTS_TABLE)
-    .upsert(
-      {
+    .select("id")
+    .eq("source_id", payload.sourceId)
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error("Failed to check existing blog post:", fetchError);
+    throw new Error("Unable to verify existing blog post.");
+  }
+
+  let resultData;
+  let resultError;
+
+  if (existingPost) {
+    // Update existing
+    const { data, error } = await supabase
+      .from(BLOG_POSTS_TABLE)
+      .update({
+        title: payload.title,
+        content: payload.content,
+        related_articles: payload.relatedArticles ?? null,
+        published_at: payload.publishedAt,
+      })
+      .eq("source_id", payload.sourceId)
+      .select()
+      .single();
+    resultData = data;
+    resultError = error;
+  } else {
+    // Insert new
+    const { data, error } = await supabase
+      .from(BLOG_POSTS_TABLE)
+      .insert({
         source_id: payload.sourceId,
         title: payload.title,
         content: payload.content,
         related_articles: payload.relatedArticles ?? null,
         published_at: payload.publishedAt,
-      },
-      { onConflict: "source_id" },
-    )
-    .select()
-    .single();
+      })
+      .select()
+      .single();
+    resultData = data;
+    resultError = error;
+  }
 
-  if (error) {
-    console.error("Failed to upsert blog post:", error);
-    const errorCode = (error as { code?: string }).code;
+  if (resultError) {
+    console.error("Failed to save blog post:", resultError);
+    const errorCode = (resultError as { code?: string }).code;
     if (errorCode === "42P01") {
       throw new Error(
         "Blog posts table not found. Please create the 'blog_posts' table in Supabase.",
       );
     }
-    throw new Error(error.message || "Unable to publish blog post.");
+    throw new Error(resultError.message || "Unable to publish blog post.");
   }
 
-  if (!data) {
-    throw new Error("No data returned after blog post upsert.");
+  if (!resultData) {
+    throw new Error("No data returned after blog post save.");
   }
 
-  return mapBlogPost(data);
+  return mapBlogPost(resultData);
 };
 
 export const fetchBlogPostBySourceId = async (

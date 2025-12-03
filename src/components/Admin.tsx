@@ -219,13 +219,31 @@ const Admin: React.FC<AdminProps> = ({ articles, setArticles }) => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
+      // Webhook sent successfully
       const updatedArticles = articles.map((a) =>
         a.id === selectedArticle.id ? { ...a, analysis: selectedAnalysis } : a,
       );
       setArticles(updatedArticles);
-      await updateArticleAnalysis(selectedArticle, selectedAnalysis);
-      setSelectedAnalysis(null);
-      setSelectedArticle(null);
+
+      try {
+        await updateArticleAnalysis(selectedArticle, selectedAnalysis);
+        setSelectedAnalysis(null);
+        setSelectedArticle(null);
+      } catch (dbError) {
+        console.error("Failed to save analysis to DB:", dbError);
+        // We don't block the success flow, but we warn the user
+        setError(
+          `Social media post sent successfully, but failed to save analysis to database: ${dbError instanceof Error ? dbError.message : "Unknown error"}`,
+        );
+        // Keep the dialog open so they see the error, or close it?
+        // Let's close it but maybe show a toast? For now, setting error keeps it open if we don't clear state.
+        // But we want to indicate success of the main action.
+        // Let's clear the selection to close the dialog, but maybe show a global alert?
+        // The current UI shows error in the main dashboard if 'error' state is set.
+        // So we should probably close the dialog and show the error on the dashboard.
+        setSelectedAnalysis(null);
+        setSelectedArticle(null);
+      }
     } catch (err) {
       setError(
         `Failed to send to social media: ${err instanceof Error ? err.message : "Unknown error"}`,
@@ -430,11 +448,10 @@ const Admin: React.FC<AdminProps> = ({ articles, setArticles }) => {
                     <button
                       key={entry.id}
                       onClick={() => handleSelectBlogEntry(entry)}
-                      className={`w-full text-left px-3 py-2 border rounded transition-colors ${
-                        isActive
+                      className={`w-full text-left px-3 py-2 border rounded transition-colors ${isActive
                           ? "border-green-300 bg-green-900/60 text-green-100"
                           : "border-green-500/30 bg-black/60 text-green-300 hover:bg-green-800/40"
-                      }`}
+                        }`}
                     >
                       <div className="flex justify-between items-start gap-3">
                         <div>
