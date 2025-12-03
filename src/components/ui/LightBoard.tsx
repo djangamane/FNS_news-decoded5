@@ -18,6 +18,7 @@ interface LightBoardProps {
   onDrawStateChange?: (newState: PatternCell) => void
   controlledHoverState?: boolean
   onHoverStateChange?: (isHovered: boolean) => void
+  preserveSpaces?: boolean
 }
 
 interface LightBoardColors {
@@ -46,7 +47,8 @@ const textToPattern = (
   text: string,
   rows: number,
   columns: number,
-  font: { [key: string]: Pattern }
+  font: { [key: string]: Pattern },
+  preserveSpaces?: boolean
 ): Pattern => {
   // First, we make the letters bigger if we have more rows
   const letterHeight = font["A"].length
@@ -66,7 +68,7 @@ const textToPattern = (
     ])
   )
   // We add spaces to the text
-  const normalizedText = normalizeText(text)
+  const normalizedText = preserveSpaces ? text.toUpperCase() : normalizeText(text)
 
   // We turn each letter into a pattern of lights
   const letterPatterns = normalizedText
@@ -138,6 +140,7 @@ function LightBoard({
   disableDrawing = true,
   controlledHoverState,
   onHoverStateChange,
+  preserveSpaces,
 }: LightBoardProps) {
   // We decide how many rows and columns of lights we need
   const containerRef = useRef<HTMLDivElement>(null)
@@ -156,7 +159,7 @@ function LightBoard({
 
   // This is our pattern of lights that make up the text
   const [basePattern, setBasePattern] = useState<Pattern>(() => {
-    return textToPattern(normalizeText(text), rows, columns, selectedFont)
+    return textToPattern(text, rows, columns, selectedFont, preserveSpaces)
   })
   // This helps us move the text across the board
   const [offset, setOffset] = useState(0)
@@ -243,9 +246,9 @@ function LightBoard({
   // This updates our light pattern when the text changes
   useEffect(() => {
     setBasePattern(
-      textToPattern(normalizeText(text), rows, columns, selectedFont)
+      textToPattern(text, rows, columns, selectedFont, preserveSpaces)
     )
-  }, [text, rows, columns, selectedFont])
+  }, [text, rows, columns, selectedFont, preserveSpaces])
 
   // This is another way we make our text move
   const animate = useCallback(() => {
@@ -692,4 +695,3 @@ const defaultFont: { [key: string]: Pattern } = {
     ["1", "1", "1", "1"],
   ],
 }
-
