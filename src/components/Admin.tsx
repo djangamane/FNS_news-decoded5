@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Article, ArticleAnalysis, BlogEntry, BlogPost } from "../types";
+import type { BlogFeedStatus } from "../services/blogService";
 import {
   decodeArticle,
   updateArticleAnalysis,
   fetchBlogEntries,
   fetchPublishedBlogPosts,
   upsertBlogPost,
+  getBlogFeedStatus,
 } from "../services";
 import DecodeConfirmationDialog from "./DecodeConfirmationDialog";
 import LoadingSpinner from "./LoadingSpinner";
@@ -55,6 +57,7 @@ const Admin: React.FC<AdminProps> = ({ articles, setArticles }) => {
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [isSending, setIsSending] = useState<boolean>(false);
   const [blogEntries, setBlogEntries] = useState<BlogEntry[]>([]);
+  const [blogFeedStatus, setBlogFeedStatus] = useState<BlogFeedStatus | null>(null);
   const [selectedBlogEntry, setSelectedBlogEntry] =
     useState<BlogEntry | null>(null);
   const [isLoadingBlog, setIsLoadingBlog] = useState<boolean>(false);
@@ -110,6 +113,7 @@ const Admin: React.FC<AdminProps> = ({ articles, setArticles }) => {
     try {
       const entries = await fetchBlogEntries({ refresh, limit: 30 });
       setBlogEntries(entries);
+      setBlogFeedStatus(getBlogFeedStatus());
 
       if (!entries.length) {
         setSelectedBlogEntry(null);
@@ -430,6 +434,17 @@ const Admin: React.FC<AdminProps> = ({ articles, setArticles }) => {
           {blogError && (
             <div className="mb-4 p-3 bg-red-900/40 border border-red-500/60 rounded text-red-200">
               {blogError}
+            </div>
+          )}
+          {blogFeedStatus?.isStale && (
+            <div className="mb-4 p-3 bg-amber-900/40 border border-amber-500/60 rounded text-amber-200">
+              <strong>Newsletter feed is stale.</strong> The newest entry from
+              the {blogFeedStatus.source} is {blogFeedStatus.staleDays} days old
+              {blogFeedStatus.newestEntryAt
+                ? ` (${formatBlogDate(blogFeedStatus.newestEntryAt)})`
+                : ""}
+              . The daily publish step in the soWSnewsletter workflow has
+              probably stopped running.
             </div>
           )}
           {isLoadingBlog && !blogEntries.length ? (

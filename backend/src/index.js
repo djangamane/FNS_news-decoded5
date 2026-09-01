@@ -5,6 +5,7 @@ const rateLimit = require("express-rate-limit");
 const articleRoutes = require("./routes/articles");
 const adminRoutes = require("./routes/admin");
 const blogRoutes = require("./routes/blog");
+const decodeRoutes = require("./routes/decode");
 
 const app = express();
 
@@ -88,6 +89,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/articles", articleRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/blog", blogRoutes);
+app.use("/api/decode", decodeRoutes);
 
 // Root endpoint
 app.get("/", (req, res) => {
@@ -100,6 +102,7 @@ app.get("/", (req, res) => {
       "GET /api/articles/health": "Health check",
       "POST /api/admin/trigger-fetch": "Manual article fetch (admin)",
       "GET /api/admin/status": "Admin status check",
+      "POST /api/decode": "Run bias analysis + Keisha Translation on article text",
     },
   });
 });

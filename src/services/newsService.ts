@@ -4,22 +4,6 @@ import { supabase } from "./supabaseClient";
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3002";
 
 /**
- * Extracts a user-friendly source name from a URL.
- * @param url The full URL of the article.
- * @returns A formatted source name (e.g., 'example.com').
- */
-const getSourceFromUrl = (url: string): string => {
-  try {
-    const hostname = new URL(url).hostname;
-    // Remove 'www.' for cleaner presentation
-    return hostname.replace(/^www\./, "");
-  } catch (error) {
-    console.error("Could not parse URL for source:", url);
-    return "Unknown Source";
-  }
-};
-
-/**
  * Extracts the actual URL from a Google redirect URL.
  * @param url The potentially redirected URL.
  * @returns The extracted URL or the original if not a redirect.
@@ -34,6 +18,22 @@ const extractRealUrl = (url: string): string => {
     return url;
   } catch (error) {
     return url;
+  }
+};
+
+/**
+ * Extracts a user-friendly source name from a URL.
+ * @param url The full URL of the article.
+ * @returns A formatted source name (e.g., 'example.com').
+ */
+const getSourceFromUrl = (url: string): string => {
+  try {
+    const hostname = new URL(extractRealUrl(url)).hostname;
+    // Remove 'www.' for cleaner presentation
+    return hostname.replace(/^www\./, "");
+  } catch (error) {
+    console.error("Could not parse URL for source:", url);
+    return "Unknown Source";
   }
 };
 
@@ -61,7 +61,7 @@ export const fetchTopStories = async (): Promise<Article[]> => {
       (article: any, index: number): Article => ({
         id: article.id,
         title: article.title || "Untitled Article",
-        url: article.source_url,
+        url: extractRealUrl(article.source_url),
         imageUrl:
           article.image_url ||
           `https://picsum.photos/seed/${encodeURIComponent(article.title || "fallback")}/${600 + index}/400`,
@@ -107,7 +107,7 @@ export const updateArticleAnalysis = async (
     const updatedArticle: Article = {
       id: data[0].id,
       title: data[0].title || "Untitled Article",
-      url: data[0].source_url,
+      url: extractRealUrl(data[0].source_url),
       imageUrl:
         data[0].image_url ||
         `https://picsum.photos/seed/${encodeURIComponent(data[0].title || "fallback")}/600/400`,
