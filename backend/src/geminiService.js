@@ -2,11 +2,21 @@ const { GoogleGenAI, Type } = require("@google/genai");
 
 // The API key stays on the server. It must never be exposed to the browser via
 // a VITE_-prefixed variable, because Vite inlines those into the client bundle.
-if (!process.env.GEMINI_API_KEY) {
-  throw new Error("GEMINI_API_KEY environment variable is not set");
-}
+//
+// The client is built on first use rather than at import time: throwing here
+// would take down the whole server, including the blog and ingest routes, just
+// because one optional key is absent.
+let aiClient = null;
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+function getClient() {
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY environment variable is not set");
+  }
+  if (!aiClient) {
+    aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  }
+  return aiClient;
+}
 
 const MODEL = "gemini-2.5-flash";
 
@@ -57,7 +67,7 @@ const TRANSLATION_SYSTEM_INSTRUCTION = `You are an AI critic named 'Keisha'. You
     The output must be ONLY the full, rewritten article in this critical style.`;
 
 async function analyseArticle(text) {
-  const response = await ai.models.generateContent({
+  const response = await getClient().models.generateContent({
     model: MODEL,
     contents: text,
     config: {
@@ -70,7 +80,7 @@ async function analyseArticle(text) {
 }
 
 async function translateArticle(text) {
-  const response = await ai.models.generateContent({
+  const response = await getClient().models.generateContent({
     model: MODEL,
     contents: text,
     config: {
