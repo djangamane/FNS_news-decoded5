@@ -11,7 +11,15 @@ const pool = new Pool({
     // Recommended for Vercel/serverless environments to avoid SSL issues
     ssl: {
         rejectUnauthorized: false
-    }
+    },
+    // Without these an unreachable database does not error, it hangs: the
+    // request never returns and the caller's try/catch never runs. Supabase's
+    // direct connection is IPv6-only while Render is IPv4-only, which is
+    // exactly how that happens. Fail fast so callers can fall back instead.
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 30000,
+    statement_timeout: 15000,
+    max: 10
 });
 
 /**
