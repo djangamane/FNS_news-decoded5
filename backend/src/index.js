@@ -16,6 +16,9 @@ const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost:5173",
   "http://localhost:3000",
   "https://fns-news-decoded5.vercel.app",
+  // The production custom domain. Omitting it meant every request from the
+  // site users actually visit was rejected by CORS.
+  "https://fnsnews.talk2keisha.com",
 ];
 
 const sanitizeOriginList = (origins) =>
