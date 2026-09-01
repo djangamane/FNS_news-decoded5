@@ -8,6 +8,52 @@ const DEFAULT_NEWSLETTER_URL =
 const BLOG_NEWSLETTER_URL =
   import.meta.env.VITE_BLOG_NEWSLETTER_URL || DEFAULT_NEWSLETTER_URL;
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3002";
+
+// Days after which the newsletter feed is treated as broken rather than quiet.
+// The Google Sheet silently stopped updating on 2025-06-04 and went unnoticed
+// for over a year; `blogFeedStatus` exists so that cannot repeat.
+const STALE_AFTER_DAYS = 3;
+
+export interface BlogFeedStatus {
+  source: "backend" | "sheet";
+  staleDays: number | null;
+  isStale: boolean;
+  newestEntryAt: string | null;
+}
+
+let lastFeedStatus: BlogFeedStatus | null = null;
+
+/** Status of the most recent fetchBlogEntries call, for surfacing in the UI. */
+export const getBlogFeedStatus = (): BlogFeedStatus | null => lastFeedStatus;
+
+const daysSince = (iso: string | null | undefined): number | null => {
+  if (!iso) return null;
+  const parsed = Date.parse(iso);
+  if (Number.isNaN(parsed)) return null;
+  return Math.floor((Date.now() - parsed) / 86400000);
+};
+
+const recordFeedStatus = (
+  source: "backend" | "sheet",
+  entries: BlogEntry[],
+): void => {
+  const newestEntryAt = entries[0]?.publishedAt ?? null;
+  const staleDays = daysSince(newestEntryAt);
+  lastFeedStatus = {
+    source,
+    staleDays,
+    isStale: staleDays !== null && staleDays > STALE_AFTER_DAYS,
+    newestEntryAt,
+  };
+
+  if (lastFeedStatus.isStale) {
+    console.warn(
+      `Newsletter feed (${source}) is stale: newest entry is ${staleDays} days old.`,
+    );
+  }
+};
+
 const BLOG_CACHE_TTL_MS = Number(
   import.meta.env.VITE_BLOG_CACHE_TTL_MS || 15 * 60 * 1000,
 );
@@ -249,19 +295,43 @@ export const fetchBlogEntries = async (
       : cacheState.entries;
   }
 
-  const csvUrl = normaliseSpreadsheetUrl(BLOG_NEWSLETTER_URL);
+  // The backend serves drafts pushed daily by the soWSnewsletter Action. The
+  // sheet is the legacy path, kept so the blog still renders if the backend is
+  // unreachable or its drafts table has not been provisioned yet.
+  let entries: BlogEntry[] | null = null;
+  let source: "backend" | "sheet" = "backend";
 
-  const response = await fetch(csvUrl);
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to download newsletter CSV (status ${response.status}).`,
-    );
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/blog`);
+    if (response.ok) {
+      const payload = await response.json();
+      if (Array.isArray(payload?.entries) && payload.entries.length > 0) {
+        entries = payload.entries as BlogEntry[];
+        source = payload.source === "sheet" ? "sheet" : "backend";
+      }
+    }
+  } catch (error) {
+    console.warn("Backend newsletter feed unavailable, falling back to the sheet:", error);
   }
 
-  const csvText = await response.text();
-  const rows = parseCsv(csvText);
-  const entries = convertRowsToEntries(rows);
+  if (!entries) {
+    const csvUrl = normaliseSpreadsheetUrl(BLOG_NEWSLETTER_URL);
+
+    const response = await fetch(csvUrl);
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to download newsletter CSV (status ${response.status}).`,
+      );
+    }
+
+    const csvText = await response.text();
+    const rows = parseCsv(csvText);
+    entries = convertRowsToEntries(rows);
+    source = "sheet";
+  }
+
+  recordFeedStatus(source, entries);
 
   cacheState.entries = entries;
   cacheState.expiresAt = now + BLOG_CACHE_TTL_MS;

@@ -11,6 +11,10 @@ services:
         value: 10000
       - key: ADMIN_PASSWORD
         generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: BLOG_INGEST_API_KEY
+        generateValue: true
       - key: CORS_ORIGIN
         value: https://fns-news-decoded5.vercel.app
       - key: CHROME_PATH

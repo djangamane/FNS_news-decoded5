@@ -11,6 +11,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@google/genai": "^1.16.0",
     "@google/generative-ai": "^0.14.1",
     "axios": "^1.11.0",
     "cors": "^2.8.5",
@@ -18,10 +19,7 @@
     "express-basic-auth": "^1.2.1",
     "express-rate-limit": "^6.7.0",
     "helmet": "^6.0.0",
-<<<<<<< HEAD
     "pg": "^8.16.3",
-=======
->>>>>>> 7b788595e0e5b18483c4a6b8e4f7eb43a5207e36
     "puppeteer": "^21.0.0"
   },
   "devDependencies": {

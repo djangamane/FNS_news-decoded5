@@ -114,4 +114,64 @@ async function getBlogPostsForFeed(limit = 200) {
     return getPublishedBlogPosts({ limit });
 }
 
-module.exports = { getArticlesByUrls, getPublishedBlogPosts, getBlogPostsForFeed };
+const NEWSLETTER_DRAFTS_TABLE = "newsletter_drafts";
+
+const mapDraftRow = (row) => ({
+    id: row.source_id,
+    title: row.title || "Newsletter Update",
+    newsletter: row.newsletter || "",
+    relatedArticles: row.related_articles || undefined,
+    publishedAt: normaliseTimestamp(row.published_at) || normaliseTimestamp(row.created_at),
+});
+
+/**
+ * Inserts or updates one day's newsletter draft, keyed on its date.
+ * @param {{ sourceId: string, title: string, newsletter: string, relatedArticles?: string, publishedAt: string }} draft
+ * @returns {Promise<object>}
+ */
+async function upsertNewsletterDraft(draft) {
+    const query = {
+        text: `
+            INSERT INTO ${NEWSLETTER_DRAFTS_TABLE}
+                (source_id, title, newsletter, related_articles, published_at)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (source_id) DO UPDATE SET
+                title = EXCLUDED.title,
+                newsletter = EXCLUDED.newsletter,
+                related_articles = EXCLUDED.related_articles,
+                published_at = EXCLUDED.published_at,
+                updated_at = NOW()
+            RETURNING *
+        `,
+        values: [
+            draft.sourceId,
+            draft.title,
+            draft.newsletter,
+            draft.relatedArticles || null,
+            draft.publishedAt,
+        ],
+    };
+
+    const { rows } = await pool.query(query);
+    return mapDraftRow(rows[0]);
+}
+
+/**
+ * Returns newsletter drafts, newest first.
+ * @param {{ limit?: number }} options
+ * @returns {Promise<object[]>}
+ */
+async function getNewsletterDrafts(options = {}) {
+    const limit = typeof options.limit === "number" && options.limit > 0 ? options.limit : 50;
+    const { rows } = await pool.query({
+        text: `
+            SELECT * FROM ${NEWSLETTER_DRAFTS_TABLE}
+            ORDER BY published_at DESC
+            LIMIT $1
+        `,
+        values: [limit],
+    });
+    return rows.map(mapDraftRow);
+}
+
+module.exports = { getArticlesByUrls, getPublishedBlogPosts, getBlogPostsForFeed, upsertNewsletterDraft, getNewsletterDrafts };
