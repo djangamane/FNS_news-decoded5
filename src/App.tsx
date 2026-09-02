@@ -8,6 +8,7 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import LoadingSpinner from "./components/LoadingSpinner";
 import Admin from "./components/Admin";
+import AdminGate from "./components/AdminGate";
 import BlogLayout from "./components/blog/BlogLayout";
 import BlogIndex from "./components/blog/BlogIndex";
 import BlogPostPage from "./components/blog/BlogPostPage";
@@ -141,7 +142,11 @@ const App: React.FC = () => {
       </Route>
       <Route
         path="/admin"
-        element={<Admin articles={articles} setArticles={setArticles} />}
+        element={
+          <AdminGate>
+            <Admin articles={articles} setArticles={setArticles} />
+          </AdminGate>
+        }
       />
       <Route path="*" element={<NotFound />} />
     </Routes>
