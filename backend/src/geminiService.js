@@ -18,7 +18,7 @@ function getClient() {
   return aiClient;
 }
 
-const MODEL = "gemini-2.5-flash";
+const MODEL = "gemini-3.6-flash";
 
 const analysisSchema = {
   type: Type.OBJECT,
