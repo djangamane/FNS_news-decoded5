@@ -20,6 +20,38 @@ function getClient() {
 
 const MODEL = "gemini-3.6-flash";
 
+// The API answers spikes in demand with 503, and quota pressure with 429.
+// Both clear on their own, so a decode should wait rather than fail the
+// request: without this the whole call fails on the first busy moment.
+const TRANSIENT_PATTERN = /\b(503|UNAVAILABLE|429|RESOURCE_EXHAUSTED|overloaded)\b/i;
+const MAX_ATTEMPTS = 3;
+const BASE_BACKOFF_MS = 1500;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function withRetry(label, run) {
+  let lastError;
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+    try {
+      return await run();
+    } catch (error) {
+      lastError = error;
+      const transient = TRANSIENT_PATTERN.test(String(error?.message ?? error));
+
+      if (!transient || attempt === MAX_ATTEMPTS - 1) {
+        throw error;
+      }
+
+      const delay = BASE_BACKOFF_MS * 2 ** attempt;
+      console.warn(`${label}: transient error, retrying in ${delay}ms`);
+      await sleep(delay);
+    }
+  }
+
+  throw lastError;
+}
+
 const analysisSchema = {
   type: Type.OBJECT,
   properties: {
@@ -67,26 +99,30 @@ const TRANSLATION_SYSTEM_INSTRUCTION = `You are an AI critic named 'Keisha'. You
     The output must be ONLY the full, rewritten article in this critical style.`;
 
 async function analyseArticle(text) {
-  const response = await getClient().models.generateContent({
-    model: MODEL,
-    contents: text,
-    config: {
-      systemInstruction: ANALYSIS_SYSTEM_INSTRUCTION,
-      responseMimeType: "application/json",
-      responseSchema: analysisSchema,
-    },
-  });
+  const response = await withRetry("analyseArticle", () =>
+    getClient().models.generateContent({
+      model: MODEL,
+      contents: text,
+      config: {
+        systemInstruction: ANALYSIS_SYSTEM_INSTRUCTION,
+        responseMimeType: "application/json",
+        responseSchema: analysisSchema,
+      },
+    }),
+  );
   return JSON.parse(response.text.trim());
 }
 
 async function translateArticle(text) {
-  const response = await getClient().models.generateContent({
-    model: MODEL,
-    contents: text,
-    config: {
-      systemInstruction: TRANSLATION_SYSTEM_INSTRUCTION,
-    },
-  });
+  const response = await withRetry("translateArticle", () =>
+    getClient().models.generateContent({
+      model: MODEL,
+      contents: text,
+      config: {
+        systemInstruction: TRANSLATION_SYSTEM_INSTRUCTION,
+      },
+    }),
+  );
   return response.text.trim();
 }
 
